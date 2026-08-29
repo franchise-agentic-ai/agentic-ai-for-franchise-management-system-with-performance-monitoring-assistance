@@ -1,0 +1,6 @@
+{
+  "name": "Agentic AI for Franchise Management System with Performance Monitoring Assistance",
+  "description": "An enterprise-grade, AI-powered franchise management and performance intelligence platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
