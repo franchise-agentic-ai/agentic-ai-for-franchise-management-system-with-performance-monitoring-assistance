@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, type MotionValue } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Search, FileText, PlayCircle, GraduationCap, CheckSquare, LineChart, Settings, Lock, Award, Zap, Star, MapPin, AlertTriangle, BrainCircuit, TrendingUp, Users, Target, CheckCircle2, AlertCircle, Sparkles, Store, Megaphone, Menu, X, ChevronDown } from 'lucide-react';
+import { Search, FileText, PlayCircle, GraduationCap, CheckSquare, LineChart, Settings, Lock, Award, Zap, Star, MapPin, AlertTriangle, TrendingUp, Users, Target, CheckCircle2, AlertCircle, Store, Megaphone, Menu, X, ChevronDown } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
+import { GlobalFooter } from '../components/layout/GlobalFooter';
 import { Button } from '../components/ui/Button';
 import { cn } from '../lib/utils';
 import { mockInsights } from '../services/mockData';
@@ -37,9 +39,7 @@ export function LandingPage() {
             }}
             className="flex items-center gap-3 cursor-pointer group select-none"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6b3d] via-[#f05a28] to-[#d94814] flex items-center justify-center shadow-md shadow-orange-500/25 group-hover:scale-105 transition-transform duration-200">
-              <BrainCircuit className="w-5 h-5 text-white" />
-            </div>
+            <FranchiseOpsLogo className="w-10 h-10 group-hover:scale-105 transition-transform duration-200 shrink-0 drop-shadow-md" />
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-xl tracking-tight text-slate-900">FranchiseOps AI</span>
@@ -122,7 +122,7 @@ export function LandingPage() {
                 }}
                 className="flex items-center gap-2 cursor-pointer"
               >
-                <BrainCircuit className="w-6 h-6 text-[#ff6b3d]" />
+                <FranchiseOpsLogo className="w-7 h-7 drop-shadow-md" />
                 <span className="font-bold text-xl">FranchiseOps AI</span>
               </Link>
               <button onClick={() => setMobileMenuOpen(false)}><X className="w-6 h-6 text-slate-600" /></button>
@@ -154,7 +154,7 @@ export function LandingPage() {
               transition={{ duration: 0.4 }}
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 border border-orange-200/80 text-xs sm:text-sm font-semibold text-slate-700 mb-6 shadow-xs"
             >
-              <Sparkles className="w-4 h-4 text-[#ff6b3d]" />
+              <FranchiseOpsLogo className="w-4 h-4" />
               The Agentic Franchise & Multi-Unit Management Platform
             </motion.div>
 
@@ -224,7 +224,7 @@ export function LandingPage() {
               <FeatureCard icon={<Users />} title="Staff Agent" desc="Analyzes workforce performance and staffing optimizations." href="/dashboard/staff" />
               <FeatureCard icon={<Megaphone />} title="Marketing Agent" desc="Tracks campaign ROI and customer acquisition metrics." href="/dashboard/marketing" />
               <FeatureCard icon={<CheckCircle2 />} title="Audit Agent" desc="Automates operational compliance and issue resolution." href="/dashboard/audits" />
-              <FeatureCard icon={<BrainCircuit />} title="AI Insights" desc="Cross-domain analysis linking operational metrics to business outcomes." href="/dashboard/insights" />
+              <FeatureCard icon={<FranchiseOpsLogo className="w-6 h-6" />} title="AI Insights" desc="Cross-domain analysis linking operational metrics to business outcomes." href="/dashboard/insights" />
               <FeatureCard icon={<Target />} title="Recommendations" desc="Human-in-the-loop workflows for executing high-impact actions." href="/dashboard/recommendations" />
               <FeatureCard icon={<AlertCircle />} title="Alert Center" desc="Enterprise-grade alerting for critical operational risks." href="/dashboard/alerts" />
             </div>
@@ -237,7 +237,7 @@ export function LandingPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
               <div>
                 <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold mb-6 border border-orange-200/60">
-                  <Sparkles className="w-3.5 h-3.5 text-[#ff6b3d]" />
+                  <FranchiseOpsLogo className="w-3.5 h-3.5" />
                   Collaborative Operations & Compliance
                 </div>
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 mb-6 leading-tight">
@@ -276,7 +276,7 @@ export function LandingPage() {
         <section id="contact" className="py-24 bg-gradient-to-b from-white to-[#fff6f1] border-t border-orange-100/60 relative overflow-hidden">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-xs sm:text-sm font-semibold text-orange-600 mb-6 shadow-xs">
-              <Sparkles className="w-4 h-4 text-[#ff6b3d]" />
+              <FranchiseOpsLogo className="w-4 h-4" />
               Start Scaling Your Franchise Network Today
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-6 leading-tight">
@@ -300,42 +300,8 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* FOOTER */}
-        <footer className="bg-slate-900 py-16 border-t border-slate-800 text-slate-400">
-          <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
-            <div className="lg:col-span-2">
-              <div className="flex items-center gap-2 mb-6">
-                <BrainCircuit className="w-6 h-6 text-indigo-500" />
-                <span className="font-bold text-xl tracking-tight text-white">FranchiseOps AI</span>
-              </div>
-              <p className="text-sm max-w-sm">Agentic AI for Franchise Management System with Performance Monitoring Assistance.</p>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Platform</h4>
-              <ul className="space-y-3 text-sm">
-                <li><Link to="/dashboard" className="hover:text-white transition-colors">Dashboard</Link></li>
-                <li><Link to="/dashboard/outlets" className="hover:text-white transition-colors">Outlets</Link></li>
-                <li><Link to="/dashboard/insights" className="hover:text-white transition-colors">AI Insights</Link></li>
-                <li><Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Company</h4>
-              <ul className="space-y-3 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Legal</h4>
-              <ul className="space-y-3 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-              </ul>
-            </div>
-          </div>
-        </footer>
+        {/* GLOBAL FOOTER */}
+        <GlobalFooter />
       </main>
     </div>
   );
@@ -393,19 +359,11 @@ function FeatureCard({
             </span>
           )}
         </div>
-        <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-indigo-600 transition-colors flex items-center justify-between">
-          <span>{title}</span>
-          {href && <span className="text-xs font-bold text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">Launch →</span>}
+        <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-indigo-600 transition-colors">
+          {title}
         </h3>
         <p className="text-slate-600 text-sm leading-relaxed">{desc}</p>
       </div>
-
-      {href && (
-        <div className="mt-4 pt-3 border-t border-slate-100/80 flex items-center text-xs font-bold text-indigo-600 group-hover:text-indigo-700">
-          <span>Open Dashboard Workspace</span>
-          <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
-        </div>
-      )}
     </motion.div>
   );
 

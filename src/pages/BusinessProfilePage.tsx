@@ -8,7 +8,6 @@ import {
   Save, 
   CheckCircle2, 
   Layers, 
-  Sparkles, 
   ShieldCheck, 
   Activity,
   Plus,

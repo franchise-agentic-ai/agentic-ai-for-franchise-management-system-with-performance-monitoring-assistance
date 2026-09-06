@@ -4,7 +4,6 @@ import {
   AlertOctagon, 
   AlertTriangle, 
   Flame, 
-  Sparkles, 
   Search, 
   Filter, 
   CheckCircle2, 
@@ -17,6 +16,7 @@ import {
   Send,
   Eye
 } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { getActiveBusiness, getTenantAudits, getTenantOutlets } from '../services/tenantService';
@@ -249,7 +249,7 @@ export function RiskCenterPage() {
         <div className="space-y-4">
           <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-600 shrink-0" />
+              <FranchiseOpsLogo className="w-5 h-5 shrink-0" />
               <div>
                 <strong className="block text-sm">Statistical Outlier Signals Detected</strong>
                 <span>Sentinel AI Agent flagged {anomalies.length} high-variance operational anomalies requiring intervention.</span>
@@ -333,7 +333,7 @@ export function RiskCenterPage() {
                   {/* Turnaround Roadmap */}
                   <div className="p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-100 text-xs text-slate-800">
                     <strong className="block text-indigo-900 mb-1 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                      <FranchiseOpsLogo className="w-3.5 h-3.5" />
                       Executive Recovery Roadmap:
                     </strong>
                     {item.recommendedAction}

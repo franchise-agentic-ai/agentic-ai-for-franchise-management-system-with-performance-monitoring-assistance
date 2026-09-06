@@ -285,119 +285,30 @@ export async function runFullBusinessAnalysis(businessId: string): Promise<{
   };
 }
 
+import { runBusinessAgentOrchestrator, AgentStructuredOutput } from './businessAgentOrchestrator';
+
 /**
- * AI Business Assistant natural language query interface
+ * AI Business Assistant natural language query interface.
+ * Delegates to the unified BusinessAgentOrchestrator for multi-tool execution,
+ * cross-domain reasoning, and live Supabase / tenant data retrieval.
  */
 export async function askBusinessAssistant(
   question: string,
   businessId: string
-): Promise<{ answer: string; keyMetrics: string[]; relatedOutlets: string[]; isAiGenerated: boolean }> {
-  const business = getActiveBusiness();
-  const outlets = getTenantOutlets(businessId);
-  const sales = getTenantSales(businessId);
-  const inventory = getTenantInventory(businessId);
-  const staff = getTenantStaff(businessId);
-  const insights = getTenantInsights(businessId);
-
-  // If Gemini API is connected
-  if (aiClient && apiKey) {
-    try {
-      const summaryContext = {
-        businessName: business.name,
-        industry: business.industry,
-        outletsCount: outlets.length,
-        totalRevenue: sales.reduce((s, r) => s + r.revenue, 0),
-        outlets: outlets.map(o => {
-          const s = sales.find(sl => sl.outlet_id === o.id);
-          return {
-            name: o.name,
-            city: o.city,
-            revenue: s ? `₹${(s.revenue / 100000).toFixed(2)}L` : 'N/A',
-            targetAch: s && s.target_revenue > 0 ? `${((s.revenue / s.target_revenue) * 100).toFixed(1)}%` : 'N/A',
-          };
-        }),
-        stockouts: inventory.filter(i => i.status === 'Stockout Risk').map(i => `${i.product_name} at ${i.outlet_name}`),
-        activeInsights: insights.map(i => ({ title: i.title, finding: i.finding, rec: i.recommendation })),
-      };
-
-      const prompt = `You are the Executive AI Business Assistant for '${business.name}'.
-Answer the franchise owner's question using ONLY the provided structured business data.
-Highlight operational friction, key metrics, and recommended actions clearly.
-
-Business Context:
-${JSON.stringify(summaryContext, null, 2)}
-
-Question: "${question}"`;
-
-      const response = await aiClient.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      });
-
-      if (response.text) {
-        return {
-          answer: response.text,
-          keyMetrics: [
-            `Business: ${business.name}`,
-            `Outlets: ${outlets.length}`,
-            `Total Revenue: ₹${(sales.reduce((s, r) => s + r.revenue, 0) / 100000).toFixed(1)}L`
-          ],
-          relatedOutlets: outlets.map(o => o.name),
-          isAiGenerated: true,
-        };
-      }
-    } catch (e) {
-      console.warn('Gemini API call error in Business Assistant:', e);
-    }
-  }
-
-  // Deterministic Fallback Synthesis
-  const q = question.toLowerCase();
-  const totalRev = sales.reduce((s, r) => s + r.revenue, 0);
-
-  if (q.includes('worst') || q.includes('underperform') || q.includes('laggard') || q.includes('decline')) {
-    const trailingSales = [...sales].sort((a, b) => (a.revenue / a.target_revenue) - (b.revenue / b.target_revenue));
-    const lowest = trailingSales[0];
-    return {
-      answer: `Based on current operational streams for **${business.name}**, the most critical underperformance is at **${lowest?.outlet_name || 'trailing locations'}** achieving only **${lowest ? Math.round((lowest.revenue / lowest.target_revenue) * 100) : 72}% of target** (₹${lowest ? (lowest.revenue / 100000).toFixed(1) : '14.5'}L vs ₹${lowest ? (lowest.target_revenue / 100000).toFixed(1) : '20.0'}L Target).\n\n` +
-        `• **Root Causes:** Ingredient stockouts and peak-hour service delays.\n` +
-        `• **Action Recommended:** Trigger emergency ingredient replenishment and shift float kitchen staff for weekend rush.`,
-      keyMetrics: [`Lowest Target Pace: ${lowest ? Math.round((lowest.revenue / lowest.target_revenue) * 100) : 72}%`, `Active Outlets: ${outlets.length}`],
-      relatedOutlets: [lowest?.outlet_name || ''],
-      isAiGenerated: false,
-    };
-  }
-
-  if (q.includes('stockout') || q.includes('inventory') || q.includes('product')) {
-    const stockouts = inventory.filter(i => i.status === 'Stockout Risk' || i.current_stock < i.min_stock);
-    return {
-      answer: `Currently **${stockouts.length} item(s)** are flagged at acute stockout risk:\n\n` +
-        stockouts.map(s => `• **${s.product_name}** at **${s.outlet_name}**: Current stock is **${s.current_stock} ${s.unit}** against a safety minimum of **${s.min_stock} ${s.unit}** (Supplier: ${s.supplier}).`).join('\n') +
-        `\n\n**Action:** Expedite PO orders with primary logistics hubs to avoid weekend lost sales.`,
-      keyMetrics: [`Stockout Items: ${stockouts.length}`, `Total Tracked SKUs: ${inventory.length}`],
-      relatedOutlets: Array.from(new Set(stockouts.map(s => s.outlet_name))),
-      isAiGenerated: false,
-    };
-  }
-
-  if (q.includes('prioritize') || q.includes('action') || q.includes('focus') || q.includes('week')) {
-    return {
-      answer: `**Executive 7-Day Operations Priority Plan for ${business.name}:**\n\n` +
-        `1. **Stabilize Trailing Units:** Address kitchen prep bottlenecks and stockout risks at lagging outlets.\n` +
-        `2. **Supplier PO Expedited Reorder:** Approve pending ingredient purchase orders before the Friday rush.\n` +
-        `3. **Replicate Top Marketing Campaigns:** Scale high-performing promotional formats across remaining tier 2 locations.\n` +
-        `4. **Review AI Recommendations:** ${insights.length} actionable insights have been drafted for human-in-the-loop review.`,
-      keyMetrics: ['4 Action Priorities', `Network Health: 79/100`],
-      relatedOutlets: outlets.map(o => o.name),
-      isAiGenerated: false,
-    };
-  }
-
+): Promise<{ 
+  answer: string; 
+  keyMetrics: string[]; 
+  relatedOutlets: string[]; 
+  isAiGenerated: boolean;
+  structuredResult?: AgentStructuredOutput;
+}> {
+  const result = await runBusinessAgentOrchestrator(question, businessId);
   return {
-    answer: `**${business.name}** operates **${outlets.length} locations** generating **₹${(totalRev / 100000).toFixed(1)}L** in monthly revenue. The Franchise Intelligence Engine has generated **${insights.length} active insights** across sales, inventory, and workforce domains.\n\n` +
-      `You can run **"Analyze My Business"** anytime to refresh cross-agent correlations.`,
-    keyMetrics: [`Business: ${business.name}`, `Outlets: ${outlets.length}`, `Active Insights: ${insights.length}`],
-    relatedOutlets: outlets.map(o => o.name),
-    isAiGenerated: false,
+    answer: result.answer,
+    keyMetrics: result.key_metrics,
+    relatedOutlets: result.related_outlets,
+    isAiGenerated: result.isAiGenerated,
+    structuredResult: result,
   };
 }
+

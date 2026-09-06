@@ -4,7 +4,6 @@ import {
   Users, 
   TrendingUp, 
   CalendarCheck, 
-  Sparkles, 
   Search, 
   Filter, 
   Plus, 
@@ -20,6 +19,7 @@ import {
   Send,
   Zap
 } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { getActiveBusiness, getTenantStaff, saveTenantStaff, addTenantStaff, getTenantOutlets } from '../services/tenantService';
@@ -96,7 +96,7 @@ export function StaffPage() {
       status: 'Active'
     };
 
-    addTenantStaff(newRecord);
+    addTenantStaff(business.id, newRecord);
     loadData();
     setIsAddModalOpen(false);
     showNotice(`Added staff member ${newName} to ${outName}`);
@@ -197,7 +197,7 @@ export function StaffPage() {
         {[
           { id: 'performance', name: 'Staff Performance', icon: Award, count: staffList.length },
           { id: 'attendance', name: 'Attendance & Shifts', icon: CalendarCheck, badge: `${Math.round(avgAttendance)}% Avg` },
-          { id: 'insights', name: 'Workforce Insights', icon: Sparkles, badge: 'AI Float Shifts' },
+          { id: 'insights', name: 'Workforce Insights', icon: FranchiseOpsLogo, badge: 'AI Float Shifts' },
         ].map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -422,9 +422,7 @@ export function StaffPage() {
               <CardContent className="p-5 space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-                      <Zap className="w-4 h-4" />
-                    </div>
+                    <FranchiseOpsLogo className="w-8 h-8 drop-shadow-md shrink-0" />
                     <div>
                       <h4 className="font-bold text-slate-900 text-sm">Float Staff Reallocation Recommendation</h4>
                       <span className="text-[11px] text-indigo-600 font-semibold">Staff Agent Auto-Optimization</span>

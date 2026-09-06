@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { BrainCircuit, Clock, AlertTriangle } from 'lucide-react';
+import { Clock, AlertTriangle } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { getInsights, getAgentRuns } from '../services/dataService';
 import { AIInsight, AgentRun } from '../types';
 
@@ -28,7 +29,7 @@ export function AIInsights() {
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-2">
-                    <BrainCircuit className="w-5 h-5 text-indigo-600" />
+                    <FranchiseOpsLogo className="w-5 h-5" />
                     <span className="text-sm font-semibold text-indigo-600 uppercase tracking-wider">{insight.related_agent}</span>
                   </div>
                   <Badge variant={insight.priority === 'Critical' ? 'danger' : 'warning'}>{insight.priority}</Badge>

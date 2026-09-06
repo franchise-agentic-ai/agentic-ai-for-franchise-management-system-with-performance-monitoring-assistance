@@ -7,7 +7,6 @@ import {
   Users, 
   Megaphone, 
   ClipboardCheck, 
-  Sparkles, 
   ArrowRight, 
   Clock, 
   Send, 
@@ -16,6 +15,7 @@ import {
   RotateCcw,
   ShieldAlert
 } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { getActiveBusiness } from '../services/tenantService';
@@ -180,7 +180,7 @@ export function ActionCenterPage() {
                   <p className="text-xs text-slate-600 leading-relaxed">{act.impactDescription}</p>
 
                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 pt-1">
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <FranchiseOpsLogo className="w-3.5 h-3.5" />
                     <span>Projected ROI: {act.estImpact}</span>
                   </div>
                 </div>

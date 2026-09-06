@@ -13,16 +13,15 @@ import {
   ArrowRight, 
   RefreshCw, 
   Download, 
-  BrainCircuit, 
   CheckCircle2, 
   Calendar, 
   Layers, 
-  Sparkles, 
   ChevronDown, 
-  Info,
-  Scale,
-  HeartPulse
+  Info, 
+  Scale, 
+  HeartPulse 
 } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { formatCurrency, formatNumber, cn } from '../lib/utils';
@@ -549,7 +548,7 @@ export function Outlets() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <BrainCircuit className="w-4 h-4 text-indigo-600" />
+                    <FranchiseOpsLogo className="w-4 h-4" />
                     Revenue Intelligence
                   </CardTitle>
                 </div>

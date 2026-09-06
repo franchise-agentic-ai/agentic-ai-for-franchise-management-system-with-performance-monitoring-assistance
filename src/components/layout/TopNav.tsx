@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, Sparkles, Building2, Plus, ChevronDown, Check } from 'lucide-react';
+import { Search, Bell, Building2, Plus, ChevronDown, Check } from 'lucide-react';
+import { FranchiseOpsLogo } from '../brand/FranchiseOpsLogo';
 import { getActiveBusiness, getAllBusinesses, setActiveBusiness } from '../../services/tenantService';
 import { BusinessProfile } from '../../types';
 import { cn } from '../../lib/utils';
@@ -96,7 +97,7 @@ export function TopNav() {
         {/* AI Copilot Quick Launch */}
         <Link to="/dashboard/intelligence">
           <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors cursor-pointer shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+            <FranchiseOpsLogo className="w-3.5 h-3.5" />
             <span>AI Copilot</span>
           </button>
         </Link>

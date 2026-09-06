@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BrainCircuit, Heart, Shield, Sparkles } from 'lucide-react';
+import { Heart, Shield } from 'lucide-react';
+import { FranchiseOpsLogo } from '../brand/FranchiseOpsLogo';
 
 export function GlobalFooter() {
   return (
@@ -11,9 +12,7 @@ export function GlobalFooter() {
           {/* Column 1: Brand & Bio */}
           <div className="lg:col-span-2 space-y-4">
             <Link to="/" className="flex items-center gap-3 group select-none">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff6b3d] via-[#f05a28] to-[#d94814] flex items-center justify-center shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform duration-200">
-                <BrainCircuit className="w-5 h-5 text-white" />
-              </div>
+              <FranchiseOpsLogo className="w-9 h-9 group-hover:scale-105 transition-transform duration-200 drop-shadow-md" />
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-xl tracking-tight text-white">FranchiseOps AI</span>
                 <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-orange-500/20 text-orange-400 rounded-full border border-orange-500/30">

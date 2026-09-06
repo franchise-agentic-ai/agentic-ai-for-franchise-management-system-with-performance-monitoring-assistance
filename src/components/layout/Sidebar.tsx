@@ -4,7 +4,6 @@ import {
   LayoutDashboard, 
   Store, 
   TrendingUp, 
-  BrainCircuit, 
   Lightbulb, 
   Users, 
   Settings, 
@@ -15,12 +14,10 @@ import {
   Megaphone,
   DollarSign,
   AlertOctagon,
-  Bot,
   Flame,
   FileBarChart,
   ChevronDown,
   ChevronRight,
-  Sparkles,
   BarChart3,
   CalendarCheck,
   Truck,
@@ -28,6 +25,7 @@ import {
   Layers,
   AlertTriangle
 } from 'lucide-react';
+import { FranchiseOpsLogo } from '../brand/FranchiseOpsLogo';
 import { cn } from '../../lib/utils';
 import { getActiveBusiness, getTenantInventory, getTenantAudits } from '../../services/tenantService';
 import { BusinessProfile } from '../../types';
@@ -170,7 +168,7 @@ export function Sidebar() {
     {
       name: 'AI Copilot',
       path: '/dashboard/copilot',
-      icon: Bot,
+      icon: FranchiseOpsLogo,
       badge: 'AI',
       badgeColor: 'bg-indigo-500/30 text-indigo-300 border-indigo-500/40',
     },
@@ -224,9 +222,7 @@ export function Sidebar() {
       {/* Brand Header */}
       <div className="h-[72px] flex items-center justify-between px-5 border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md">
         <Link to="/dashboard" className="flex items-center gap-2.5 text-white font-black text-base tracking-tight group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition-transform">
-            <BrainCircuit className="w-4.5 h-4.5" />
-          </div>
+          <FranchiseOpsLogo className="w-8 h-8 group-hover:scale-105 transition-transform drop-shadow-md" />
           <div className="flex flex-col">
             <span className="leading-tight font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent">
               FranchiseOps AI

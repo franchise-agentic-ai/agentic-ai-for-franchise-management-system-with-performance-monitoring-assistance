@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { 
-  BrainCircuit, 
-  Sparkles, 
   TrendingUp, 
   Store, 
   CheckCircle2, 
@@ -17,7 +16,6 @@ import {
   Activity,
   DollarSign,
   AlertOctagon,
-  Bot,
   Flame,
   FileBarChart,
   Settings,
@@ -110,7 +108,7 @@ export function Dashboard() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-              Good Morning, Admin
+              Good Evening, Admin
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200">
               FranchiseOps AI
@@ -132,7 +130,7 @@ export function Dashboard() {
 
           <Link to="/dashboard/copilot">
             <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center gap-1.5">
-              <Bot className="w-4 h-4 text-amber-300" />
+              <FranchiseOpsLogo className="w-4 h-4" />
               <span>AI Copilot</span>
             </Button>
           </Link>
@@ -350,8 +348,8 @@ export function Dashboard() {
         <Card className="border-indigo-100/80 bg-gradient-to-br from-white via-indigo-50/20 to-white shadow-xs">
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-indigo-600" />
-              🤖 AI Insights
+              <FranchiseOpsLogo className="w-4 h-4" />
+              AI Insights
             </CardTitle>
             <Link to="/dashboard/copilot" className="text-xs font-bold text-indigo-600 hover:underline">
               Ask Copilot →

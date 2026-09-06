@@ -4,7 +4,6 @@ import {
   DollarSign, 
   TrendingUp, 
   PieChart as PieIcon, 
-  Sparkles, 
   Search, 
   Filter, 
   Download, 
@@ -19,6 +18,7 @@ import {
   Receipt,
   Coins
 } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { getActiveBusiness, getTenantSales, getTenantOutlets } from '../services/tenantService';
@@ -158,7 +158,7 @@ export function FinancePage() {
           { id: 'revenue', name: 'Revenue', icon: TrendingUp, badge: formatCurrency(totalRevenue) },
           { id: 'expenses', name: 'Expenses', icon: Receipt, badge: formatCurrency(totalExpenses) },
           { id: 'profitability', name: 'Profitability', icon: Coins, badge: `${ebitdaMargin.toFixed(1)}% EBITDA` },
-          { id: 'forecasts', name: 'Forecasts', icon: Sparkles, badge: 'Q1 Projected' },
+          { id: 'forecasts', name: 'Forecasts', icon: FranchiseOpsLogo, badge: 'Q1 Projected' },
         ].map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -392,7 +392,7 @@ export function FinancePage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <FranchiseOpsLogo className="w-4 h-4" />
                 6-Month Revenue & EBITDA Runway Projections
               </CardTitle>
               <p className="text-xs text-slate-500">

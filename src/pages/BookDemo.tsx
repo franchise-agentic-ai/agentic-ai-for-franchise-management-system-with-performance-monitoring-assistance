@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Sparkles } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { Button } from '../components/ui/Button';
 import { GlobalHeader } from '../components/layout/GlobalHeader';
 import { GlobalFooter } from '../components/layout/GlobalFooter';
@@ -52,7 +53,7 @@ export function BookDemo() {
               <>
                 <div className="text-center mb-8">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold mb-4 border border-orange-200/60">
-                    <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+                    <FranchiseOpsLogo className="w-3.5 h-3.5" />
                     Personalized Platform Tour
                   </div>
                   <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Book a Demo</h1>

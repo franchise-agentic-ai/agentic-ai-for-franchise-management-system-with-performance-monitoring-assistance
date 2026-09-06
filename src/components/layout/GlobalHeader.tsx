@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BrainCircuit, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { FranchiseOpsLogo } from '../brand/FranchiseOpsLogo';
 import { cn } from '../../lib/utils';
 
 export function GlobalHeader() {
@@ -17,9 +18,7 @@ export function GlobalHeader() {
           to="/"
           className="flex items-center gap-3 cursor-pointer group shrink-0"
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6b3d] via-[#f05a28] to-[#d94814] flex items-center justify-center shadow-md shadow-orange-500/25 group-hover:scale-105 transition-transform duration-200 shrink-0">
-            <BrainCircuit className="w-5 h-5 text-white" />
-          </div>
+          <FranchiseOpsLogo className="w-10 h-10 group-hover:scale-105 transition-transform duration-200 shrink-0 drop-shadow-md" />
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 leading-none">

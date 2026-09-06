@@ -14,7 +14,6 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   FileText, 
-  Sparkles,
   RefreshCw,
   SlidersHorizontal
 } from 'lucide-react';

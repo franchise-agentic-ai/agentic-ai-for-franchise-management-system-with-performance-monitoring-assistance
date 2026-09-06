@@ -4,7 +4,6 @@ import {
   Download, 
   Printer, 
   Calendar, 
-  Sparkles, 
   CheckCircle2, 
   Clock, 
   FileText, 

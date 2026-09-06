@@ -333,46 +333,13 @@ export async function getUnderperformanceAlerts(): Promise<UnderperformanceAlert
   }));
 }
 
+import { queryOutletPerformanceAgent } from './geminiAgent';
+
 /**
- * Outlet Performance Agent Question & Answer Assistant
+ * Outlet Performance Agent Question & Answer Assistant.
+ * Routes through the Business-Aware Multi-Agent Orchestrator.
  */
 export async function askOutletPerformanceAgent(question: string): Promise<{ answer: string; relatedOutlets: string[]; keyMetrics: string[] }> {
-  const benchmarking = await getBenchmarkingData();
-  const q = question.toLowerCase();
-
-  const topOutlet = benchmarking[0];
-  const lowestOutlet = benchmarking[benchmarking.length - 1];
-  const underperforming = benchmarking.filter(o => o.isUnderperforming);
-
-  if (q.includes('underperform') || q.includes('failing') || q.includes('laggard')) {
-    return {
-      answer: `Currently, **${underperforming.length} outlets** are flagged as underperforming: **${underperforming.map(u => `${u.name} (Health: ${u.healthScore})`).join(', ')}**. Primary root causes include dine-in traffic disruption in Pune (-17.1% MoM) and severe chef absenteeism in Indiranagar (-13.95% MoM).`,
-      relatedOutlets: underperforming.map(u => u.name),
-      keyMetrics: ['Network Avg Health: 79/100', `Underperforming Rate: ${Math.round((underperforming.length / benchmarking.length) * 100)}%`],
-    };
-  }
-
-  if (q.includes('pune') || q.includes('kp') || q.includes('koregaon')) {
-    return {
-      answer: `**Biryani Hub - Pune (KP)** has experienced a sharp **17.14% revenue contraction**, achieving only **72.5% of its ₹20L target**. Audit agents identify two key friction points: localized road works reducing walk-in footfall by 12%, and recurring stockouts of prime biryani masala variants. Immediate delivery promotions and secondary supplier expedited shipping are recommended.`,
-      relatedOutlets: ['Biryani Hub - KP'],
-      keyMetrics: ['Revenue: ₹14.5L vs ₹20.0L Target', 'Health Score: 58/100 (Critical)'],
-    };
-  }
-
-  if (q.includes('growth') || q.includes('best') || q.includes('top')) {
-    const highestGrowth = [...benchmarking].sort((a, b) => b.revenueGrowth - a.revenueGrowth)[0];
-    return {
-      answer: `The highest revenue growth was achieved by **${highestGrowth.name}** at **+${highestGrowth.revenueGrowth}% MoM** with a Health Score of **${highestGrowth.healthScore}/100**. Overall franchise revenue leader remains **${topOutlet.name}** with **₹${(topOutlet.revenue / 100000).toFixed(1)}L** in monthly volume.`,
-      relatedOutlets: [highestGrowth.name, topOutlet.name],
-      keyMetrics: [`Top Growth: ${highestGrowth.name} (+${highestGrowth.revenueGrowth}%)`, `Top Revenue: ${topOutlet.name} (₹${(topOutlet.revenue / 100000).toFixed(1)}L)`],
-    };
-  }
-
-  // Default synthesis
-  return {
-    answer: `The franchise network comprises **${benchmarking.length} active locations** generating **₹${(benchmarking.reduce((s, o) => s + o.revenue, 0) / 100000).toFixed(1)}L**. Average outlet health is **79/100**. Management priority should focus on stabilizing **${lowestOutlet.name}** and **Biryani Hub - Indiranagar** before the upcoming weekend cycle.`,
-    relatedOutlets: [lowestOutlet.name, topOutlet.name],
-    keyMetrics: ['7 Outlets Active', 'Franchise Growth: +2.4% MoM', '2 Outlets Requiring Intervention'],
-  };
+  return await queryOutletPerformanceAgent(question);
 }
+

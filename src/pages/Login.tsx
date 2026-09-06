@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BrainCircuit, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
+import { GlobalFooter } from '../components/layout/GlobalFooter';
 import { Button } from '../components/ui/Button';
 
 export function Login() {
@@ -23,9 +25,7 @@ export function Login() {
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans selection:bg-indigo-100 selection:text-indigo-900">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center mb-6">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <BrainCircuit className="w-8 h-8 text-white" />
-          </div>
+          <FranchiseOpsLogo className="w-16 h-16 drop-shadow-lg" />
         </div>
         <h2 className="mt-2 text-center text-3xl font-bold tracking-tight text-slate-900">
           Sign in to your account
@@ -149,6 +149,11 @@ export function Login() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Global Footer */}
+      <div className="mt-16">
+        <GlobalFooter />
       </div>
     </div>
   );

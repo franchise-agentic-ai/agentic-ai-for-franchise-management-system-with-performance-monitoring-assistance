@@ -4,11 +4,9 @@ import {
   Building2, 
   Store, 
   Database, 
-  BrainCircuit, 
   CheckCircle2, 
   ArrowRight, 
   ArrowLeft, 
-  Sparkles, 
   Upload, 
   Plus, 
   Trash2,
@@ -19,6 +17,8 @@ import {
   Phone,
   Layers
 } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
+import { GlobalFooter } from '../components/layout/GlobalFooter';
 import { Button } from '../components/ui/Button';
 import { IndustryType, BusinessProfile, Outlet } from '../types';
 import { createBusiness, seedDemoDataForBusiness, addTenantOutlet } from '../services/tenantService';
@@ -140,7 +140,7 @@ export function Onboarding() {
         {/* Top Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold mb-3 border border-indigo-100">
-            <BrainCircuit className="w-4 h-4 text-indigo-600" />
+            <FranchiseOpsLogo className="w-4 h-4" />
             FranchiseOps AI • New Business Onboarding
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -404,9 +404,7 @@ export function Onboarding() {
                       : "border-slate-200 bg-white hover:border-slate-300"
                   )}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
-                    <Sparkles className="w-5 h-5" />
-                  </div>
+                  <FranchiseOpsLogo className="w-10 h-10 drop-shadow-sm" />
                   <h4 className="text-base font-bold text-slate-900">1-Click Fast Baseline (Recommended)</h4>
                   <p className="text-xs text-slate-600 leading-relaxed">
                     Instantly load a comprehensive initial dataset containing sales histories, ingredient inventory, staff rosters, and compliance audits modeled after high-growth franchises.
@@ -453,8 +451,8 @@ export function Onboarding() {
           {/* STEP 4: CALIBRATION & AI ORCHESTRATION */}
           {currentStep === 4 && (
             <div className="text-center py-12 space-y-6 animate-in fade-in duration-300">
-              <div className="w-20 h-20 rounded-3xl bg-indigo-600 text-white flex items-center justify-center mx-auto shadow-xl shadow-indigo-500/30 animate-bounce">
-                <BrainCircuit className="w-10 h-10" />
+              <div className="flex items-center justify-center mx-auto animate-bounce">
+                <FranchiseOpsLogo className="w-20 h-20 drop-shadow-xl" />
               </div>
 
               <div>
@@ -479,6 +477,11 @@ export function Onboarding() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Global Footer */}
+      <div className="mt-16">
+        <GlobalFooter />
       </div>
     </div>
   );

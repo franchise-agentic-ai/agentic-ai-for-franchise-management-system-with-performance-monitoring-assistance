@@ -3,8 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { 
-  BrainCircuit, 
   ArrowLeft, 
   TrendingUp, 
   Users, 
@@ -274,7 +274,7 @@ export function OutletDetail() {
         <Card className="border-indigo-200 shadow-md shadow-indigo-100 overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 px-6 py-4 flex items-center justify-between text-white">
             <div className="flex items-center gap-2.5">
-              <BrainCircuit className="w-5 h-5 text-indigo-400" />
+              <FranchiseOpsLogo className="w-5 h-5 drop-shadow-sm" />
               <h3 className="font-bold text-sm">Agent Root Cause Diagnostic</h3>
             </div>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/10 text-white border border-white/10">

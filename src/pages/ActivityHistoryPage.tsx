@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Activity, 
-  BrainCircuit, 
   CheckCircle2, 
   Clock, 
   Filter, 
   Search, 
   Layers, 
   Upload, 
-  Check, 
-  Sparkles 
+  Check 
 } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { getActiveBusiness, getTenantActivityLogs } from '../services/tenantService';
 import { AgentRunLog, BusinessProfile } from '../types';
@@ -87,8 +86,8 @@ export function ActivityHistoryPage() {
             filteredLogs.map((log) => (
               <div key={log.id} className="p-5 hover:bg-slate-50/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
-                    <BrainCircuit className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0 border border-indigo-100 p-1.5">
+                    <FranchiseOpsLogo className="w-full h-full" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">

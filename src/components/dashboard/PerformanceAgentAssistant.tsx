@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { BrainCircuit, Sparkles, Send, CheckCircle2, ChevronRight, CornerDownLeft, RefreshCw, Zap } from 'lucide-react';
+import { Send, CheckCircle2, ChevronRight, CornerDownLeft, RefreshCw, Zap } from 'lucide-react';
+import { FranchiseOpsLogo } from '../brand/FranchiseOpsLogo';
 import { queryOutletPerformanceAgent } from '../../services/geminiAgent';
 import { OutletBenchmarking, RevenueTrendAnalysis, UnderperformanceDetection } from '../../types';
 import { Button } from '../ui/Button';
@@ -32,21 +33,41 @@ export function PerformanceAgentAssistant({
     isAiGenerated: false,
   });
 
+  const [agentStepIndex, setAgentStepIndex] = useState(0);
+  const agentSteps = [
+    "Understanding your question...",
+    "Checking business data...",
+    "Analyzing relevant metrics...",
+    "Generating insights..."
+  ];
+
   const handleAsk = async (questionText: string) => {
     if (!questionText.trim()) return;
     setLoading(true);
+    setAgentStepIndex(0);
     setQuery(questionText);
+
+    // Rotate through status messages every 650ms during the ~2 second processing period
+    const intervalId = setInterval(() => {
+      setAgentStepIndex(prev => (prev < agentSteps.length - 1 ? prev + 1 : prev));
+    }, 650);
+
+    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 2000));
+    const queryPromise = queryOutletPerformanceAgent(questionText, {
+      benchmarking,
+      revenueTrends,
+      underperforming,
+    });
+
     try {
-      const result = await queryOutletPerformanceAgent(questionText, {
-        benchmarking,
-        revenueTrends,
-        underperforming,
-      });
+      const [result] = await Promise.all([queryPromise, minDelayPromise]);
       setResponse(result);
     } catch (e) {
       console.error(e);
     } finally {
+      clearInterval(intervalId);
       setLoading(false);
+      setAgentStepIndex(0);
     }
   };
 
@@ -62,9 +83,7 @@ export function PerformanceAgentAssistant({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-            <BrainCircuit className="w-5 h-5" />
-          </div>
+          <FranchiseOpsLogo className="w-10 h-10 drop-shadow-md shrink-0" />
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-bold text-slate-900">Outlet Performance Agent</h3>
@@ -135,12 +154,40 @@ export function PerformanceAgentAssistant({
         </Button>
       </form>
 
+      {/* Processing State Box */}
+      {loading && (
+        <div className="rounded-2xl bg-white p-5 border border-indigo-100 shadow-xs animate-in fade-in duration-300 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce [animation-delay:-0.3s]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce" />
+              </div>
+              <span className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                <FranchiseOpsLogo className="w-4 h-4 animate-pulse" /> Agent Processing Telemetry
+              </span>
+            </div>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/70">
+              UNDERSTAND → ANALYZE → RESPOND
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 text-slate-700 py-2 px-3 rounded-xl bg-slate-50 border border-slate-100 text-xs font-medium">
+            <RefreshCw className="w-3.5 h-3.5 text-indigo-600 animate-spin shrink-0" />
+            <span className="text-slate-800 font-medium transition-all duration-300">
+              {agentSteps[agentStepIndex]}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Response Box */}
-      {response && (
+      {!loading && response && (
         <div className="rounded-2xl bg-white p-5 border border-indigo-100/80 shadow-xs animate-in fade-in duration-200">
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-indigo-600" />
+              <FranchiseOpsLogo className="w-4 h-4" />
               <span className="text-xs font-bold text-indigo-900 uppercase tracking-wider">
                 Agent Diagnostic Synthesis
               </span>

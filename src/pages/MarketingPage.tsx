@@ -4,7 +4,6 @@ import {
   Megaphone, 
   TrendingUp, 
   DollarSign, 
-  Sparkles, 
   Search, 
   Filter, 
   Plus, 
@@ -101,7 +100,7 @@ export function MarketingPage() {
       status: 'Active'
     };
 
-    addTenantMarketing(newRecord);
+    addTenantMarketing(business.id, newRecord);
     loadData();
     setIsAddModalOpen(false);
     showNotice(`Launched marketing campaign: ${newCampaignName}`);

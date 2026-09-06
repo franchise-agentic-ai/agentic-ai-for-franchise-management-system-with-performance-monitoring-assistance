@@ -14,13 +14,13 @@ import {
   Truck, 
   Calendar, 
   ArrowUpRight, 
-  Sparkles, 
   FileText,
   Clock,
   Layers,
   ChevronRight,
   Send
 } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { getActiveBusiness, getTenantInventory, saveTenantInventory, addTenantInventory, getTenantOutlets } from '../services/tenantService';
@@ -109,7 +109,7 @@ export function InventoryPage() {
       status: status
     };
 
-    addTenantInventory(newRecord);
+    addTenantInventory(business.id, newRecord);
     loadData();
     setIsAddModalOpen(false);
     showNotice(`Created stock entry for ${newProductName}`);
@@ -421,7 +421,7 @@ export function InventoryPage() {
             <Card className="lg:col-span-2">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                  <FranchiseOpsLogo className="w-4 h-4" />
                   AI Projected Weekly Demand vs Buffer Curve (Basmati & Key Proteins)
                 </CardTitle>
                 <p className="text-xs text-slate-500">
@@ -458,7 +458,7 @@ export function InventoryPage() {
               <CardContent className="space-y-3.5">
                 <div className="p-3 rounded-xl bg-indigo-50/60 border border-indigo-100 text-xs text-slate-700">
                   <div className="font-bold text-indigo-900 mb-1 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    <FranchiseOpsLogo className="w-3.5 h-3.5" />
                     Weekend Surge Alert:
                   </div>
                   Friday-Sunday sales volume is projected to spike by <strong>+42%</strong>. Indiranagar and Koregaon Park outlets require +180kg buffer replenishment by Thursday EOD.

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Check, Sparkles, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
+import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { Button } from '../components/ui/Button';
 import { GlobalHeader } from '../components/layout/GlobalHeader';
 import { GlobalFooter } from '../components/layout/GlobalFooter';
@@ -102,7 +103,7 @@ export function PricingPage() {
         {/* HERO HEADER */}
         <section className="max-w-7xl mx-auto px-6 text-center pt-8 pb-12">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-100/70 border border-orange-200/80 text-[#ff6b3d] text-xs font-bold uppercase tracking-wider mb-6">
-            <Sparkles className="w-3.5 h-3.5" />
+            <FranchiseOpsLogo className="w-3.5 h-3.5" />
             Transparent, Value-Driven Pricing
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
