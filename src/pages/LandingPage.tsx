@@ -1,22 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, type MotionValue } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Search, FileText, PlayCircle, GraduationCap, CheckSquare, LineChart, Settings, Lock, Award, Zap, Star, MapPin, AlertTriangle, TrendingUp, Users, Target, CheckCircle2, AlertCircle, Store, Megaphone, Menu, X, ChevronDown } from 'lucide-react';
+import { Search, FileText, PlayCircle, GraduationCap, CheckSquare, LineChart, Settings, Lock, Award, Zap, Star, MapPin, AlertTriangle, TrendingUp, Users, Target, CheckCircle2, AlertCircle, Store, Megaphone, Menu, X, ChevronDown, LayoutDashboard, LogOut, ArrowRight } from 'lucide-react';
 import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { GlobalFooter } from '../components/layout/GlobalFooter';
 import { Button } from '../components/ui/Button';
 import { cn } from '../lib/utils';
 import { mockInsights } from '../services/mockData';
+import { getCurrentUser, logoutUser, UserAccount } from '../services/tenantService';
 
 export function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(getCurrentUser());
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    const handleAuth = () => setCurrentUser(getCurrentUser());
+    window.addEventListener('franchiseops_auth_changed', handleAuth);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('franchiseops_auth_changed', handleAuth);
+    };
   }, []);
+
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUser(null);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-orange-100 selection:text-orange-900 overflow-x-hidden">
@@ -77,17 +91,38 @@ export function LandingPage() {
 
           {/* Action / CTA Buttons */}
           <div className="hidden sm:flex items-center gap-3">
-            <Link
-              to="/login"
-              className="text-sm font-semibold text-slate-700 hover:text-[#ff6b3d] px-4 py-2 rounded-lg hover:bg-slate-100/80 transition-all"
-            >
-              Sign In
-            </Link>
-            <Link to="/demo">
-              <Button className="bg-[#ff6b3d] hover:bg-[#e85a2d] text-white font-semibold text-sm rounded-full px-5 py-2.5 shadow-md shadow-orange-500/25 transition-all hover:scale-105 active:scale-95">
-                Book a Demo
-              </Button>
-            </Link>
+            {currentUser ? (
+              <div className="flex items-center gap-2">
+                <Link to="/dashboard">
+                  <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-full px-4 py-2 shadow-sm flex items-center gap-1.5 transition-all">
+                    <LayoutDashboard className="w-3.5 h-3.5" />
+                    <span>Go to Dashboard ({currentUser.businessName || currentUser.name.split(' ')[0]})</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Button>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  title="Log out"
+                  className="p-2 text-slate-400 hover:text-rose-600 rounded-full hover:bg-rose-50 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="text-sm font-semibold text-slate-700 hover:text-[#ff6b3d] px-4 py-2 rounded-lg hover:bg-slate-100/80 transition-all"
+                >
+                  Sign In
+                </Link>
+                <Link to="/demo">
+                  <Button className="bg-[#ff6b3d] hover:bg-[#e85a2d] text-white font-semibold text-sm rounded-full px-5 py-2.5 shadow-md shadow-orange-500/25 transition-all hover:scale-105 active:scale-95">
+                    Book a Demo
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -131,10 +166,26 @@ export function LandingPage() {
               <a href="#platform" onClick={() => setMobileMenuOpen(false)}>Platform</a>
               <a href="#solutions" onClick={() => setMobileMenuOpen(false)}>Solutions</a>
               <Link to="/pricing" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
-              <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Login</Link>
-              <Link to="/demo" onClick={() => setMobileMenuOpen(false)}>
-                <Button className="w-full bg-[#ff6b3d] text-white hover:bg-[#e85a2d] py-3 rounded-xl mt-4">Book a Demo</Button>
-              </Link>
+              {currentUser ? (
+                <>
+                  <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="text-indigo-600 font-bold">
+                    Go to Dashboard ({currentUser.businessName || currentUser.name})
+                  </Link>
+                  <button
+                    onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                    className="text-left text-rose-600 font-semibold"
+                  >
+                    Log Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Sign In</Link>
+                  <Link to="/demo" onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full bg-[#ff6b3d] text-white hover:bg-[#e85a2d] py-3 rounded-xl mt-4">Book a Demo</Button>
+                  </Link>
+                </>
+              )}
             </nav>
           </motion.div>
         )}

@@ -9,50 +9,81 @@ import {
   HealthScoreBreakdown
 } from '../types';
 import { calculateHealthScore } from './healthScoreEngine';
-import { mockOutlets, mockPerformances } from './mockData';
+import { getActiveBusiness, getTenantOutlets, getTenantSales, DEFAULT_BUSINESS } from './tenantService';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { mockOutlets, mockPerformances } from './mockData';
 
 export type TimeFrame = '7D' | '30D' | '3M' | '6M' | '12M';
 export type MetricType = 'revenue' | 'orders' | 'customers' | 'aov';
 
-// In-memory cache for fast responsive interactions
-let cachedOutlets: Outlet[] = [...mockOutlets];
-let cachedPerformances: OutletPerformance[] = [...mockPerformances];
-
 /**
- * Fetch latest outlet list (Supabase or fallback mock)
+ * Fetch latest outlet list scoped to active business
  */
 export async function fetchOutlets(): Promise<Outlet[]> {
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase!.from('outlets').select('*');
-      if (!error && data && data.length > 0) {
-        cachedOutlets = data;
-        return data;
+  const activeBiz = getActiveBusiness();
+  if (activeBiz.id === DEFAULT_BUSINESS.id) {
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase!.from('outlets').select('*');
+        if (!error && data && data.length > 0) return data;
+      } catch (e) {
+        console.warn('Supabase fetch outlets failed, using mock data', e);
       }
-    } catch (e) {
-      console.warn('Supabase fetch outlets failed, using cached mock data', e);
     }
+    return mockOutlets;
   }
-  return cachedOutlets;
+  return getTenantOutlets(activeBiz.id);
 }
 
 /**
- * Fetch latest outlet performances
+ * Fetch latest outlet performances scoped to active business
  */
 export async function fetchOutletPerformances(): Promise<OutletPerformance[]> {
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase!.from('outlet_performance').select('*');
-      if (!error && data && data.length > 0) {
-        cachedPerformances = data;
-        return data;
+  const activeBiz = getActiveBusiness();
+  if (activeBiz.id === DEFAULT_BUSINESS.id) {
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase!.from('outlet_performance').select('*');
+        if (!error && data && data.length > 0) return data;
+      } catch (e) {
+        console.warn('Supabase fetch performances failed, using mock data', e);
       }
-    } catch (e) {
-      console.warn('Supabase fetch performances failed, using cached mock data', e);
     }
+    return mockPerformances;
   }
-  return cachedPerformances;
+
+  const outlets = getTenantOutlets(activeBiz.id);
+  const sales = getTenantSales(activeBiz.id);
+
+  if (outlets.length === 0 || sales.length === 0) {
+    return [];
+  }
+
+  // Aggregate sales by outlet for this business
+  return outlets.map(outlet => {
+    const outletSales = sales.filter(s => s.outlet_id === outlet.id || s.outlet_name.toLowerCase() === outlet.name.toLowerCase());
+    const totalRev = outletSales.reduce((sum, s) => sum + s.revenue, 0);
+    const targetRev = outletSales.reduce((sum, s) => sum + (s.target_revenue || s.revenue * 1.1), 0) || totalRev * 1.1 || 100000;
+    const orders = outletSales.reduce((sum, s) => sum + (s.orders || Math.round(s.revenue / 500)), 0) || 100;
+    const customers = outletSales.reduce((sum, s) => sum + (s.customers || Math.round(orders * 0.9)), 0) || 90;
+    const aov = orders > 0 ? Math.round(totalRev / orders) : 500;
+    const targetAchievement = targetRev > 0 ? (totalRev / targetRev) * 100 : 90;
+
+    return {
+      outlet_id: outlet.id,
+      period: '2023-10',
+      revenue: totalRev,
+      previous_revenue: Math.round(totalRev * 0.95),
+      target_revenue: targetRev,
+      orders,
+      customers,
+      revenue_growth: 2.5,
+      target_achievement: Math.round(targetAchievement * 10) / 10,
+      aov,
+      health_score: targetAchievement >= 90 ? 85 : 70,
+      performance_status: targetAchievement >= 100 ? 'Excellent' : targetAchievement >= 90 ? 'Good' : targetAchievement >= 75 ? 'Average' : 'Poor',
+    };
+  });
 }
 
 /**

@@ -13,8 +13,22 @@ import {
 } from '../types';
 import { mockOutlets, mockPerformances } from './mockData';
 
+export interface UserAccount {
+  id: string;
+  email: string;
+  password: string;
+  name: string;
+  phone?: string;
+  businessId: string;
+  businessName: string;
+  role: 'Business Owner' | 'Franchise Manager' | 'Outlet Manager';
+  createdAt: string;
+}
+
 const ACTIVE_BIZ_KEY = 'franchiseops_active_business_id';
 const BUSINESSES_KEY = 'franchiseops_businesses';
+const USERS_KEY = 'franchiseops_users';
+const CURRENT_USER_KEY = 'franchiseops_current_user';
 const OUTLETS_KEY_PREFIX = 'franchiseops_outlets_';
 const SALES_KEY_PREFIX = 'franchiseops_sales_';
 const INVENTORY_KEY_PREFIX = 'franchiseops_inventory_';
@@ -25,7 +39,7 @@ const MEMBERS_KEY_PREFIX = 'franchiseops_members_';
 const ACTIVITY_KEY_PREFIX = 'franchiseops_activity_';
 
 // Initial default business
-const DEFAULT_BUSINESS: BusinessProfile = {
+export const DEFAULT_BUSINESS: BusinessProfile = {
   id: 'biz_biryani_hub_01',
   name: 'Biryani Hub Franchise Group',
   industry: 'Restaurant',
@@ -40,6 +54,19 @@ const DEFAULT_BUSINESS: BusinessProfile = {
   currency: 'INR',
   created_at: '2023-01-15T09:00:00Z',
   total_outlets_count: 7,
+};
+
+// Default Demo User Account
+export const DEFAULT_DEMO_USER: UserAccount = {
+  id: 'usr_demo_01',
+  email: 'demo@franchiseops.ai',
+  password: 'password123',
+  name: 'Vijay Kumar (Demo)',
+  phone: '+91 98765 43210',
+  businessId: 'biz_biryani_hub_01',
+  businessName: 'Biryani Hub Franchise Group',
+  role: 'Business Owner',
+  createdAt: '2023-01-15T09:00:00Z',
 };
 
 // Initial default members
@@ -162,6 +189,105 @@ export function updateBusinessProfile(businessId: string, updates: Partial<Busin
     setActiveBusiness(current);
   }
   return current;
+}
+
+// -------------------------------------------------------------
+// USER ACCOUNTS & AUTHENTICATION
+// -------------------------------------------------------------
+
+/**
+ * Get all registered user accounts
+ */
+export function getAllUsers(): UserAccount[] {
+  try {
+    const raw = localStorage.getItem(USERS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to parse users from storage:', e);
+  }
+  localStorage.setItem(USERS_KEY, JSON.stringify([DEFAULT_DEMO_USER]));
+  return [DEFAULT_DEMO_USER];
+}
+
+/**
+ * Register a new business owner account
+ */
+export function registerUserAccount(data: {
+  email: string;
+  password: string;
+  name: string;
+  phone?: string;
+  businessId: string;
+  businessName: string;
+}): UserAccount {
+  const users = getAllUsers();
+  const newUser: UserAccount = {
+    id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    email: data.email.toLowerCase().trim(),
+    password: data.password,
+    name: data.name.trim(),
+    phone: data.phone?.trim(),
+    businessId: data.businessId,
+    businessName: data.businessName,
+    role: 'Business Owner',
+    createdAt: new Date().toISOString(),
+  };
+
+  const updatedUsers = [newUser, ...users.filter(u => u.email.toLowerCase() !== newUser.email)];
+  localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
+  window.dispatchEvent(new CustomEvent('franchiseops_auth_changed'));
+  return newUser;
+}
+
+/**
+ * Authenticate user credentials and activate their business scope
+ */
+export function loginUser(email: string, password: string): { success: boolean; user?: UserAccount; error?: string } {
+  const cleanEmail = email.toLowerCase().trim();
+  const users = getAllUsers();
+
+  const user = users.find(u => u.email.toLowerCase() === cleanEmail && u.password === password);
+  if (!user) {
+    return { success: false, error: 'Invalid email or password. Please verify your credentials or use the demo login.' };
+  }
+
+  // Set active session
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  
+  // Set active business
+  const businesses = getAllBusinesses();
+  const targetBiz = businesses.find(b => b.id === user.businessId);
+  if (targetBiz) {
+    setActiveBusiness(targetBiz);
+  }
+
+  window.dispatchEvent(new CustomEvent('franchiseops_auth_changed'));
+  return { success: true, user };
+}
+
+/**
+ * Log out current active user
+ */
+export function logoutUser() {
+  localStorage.removeItem(CURRENT_USER_KEY);
+  window.dispatchEvent(new CustomEvent('franchiseops_auth_changed'));
+}
+
+/**
+ * Get current authenticated user
+ */
+export function getCurrentUser(): UserAccount | null {
+  try {
+    const raw = localStorage.getItem(CURRENT_USER_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn('Failed to parse current user:', e);
+  }
+  return null;
 }
 
 // -------------------------------------------------------------

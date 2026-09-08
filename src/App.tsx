@@ -27,6 +27,7 @@ import { PricingPage } from './pages/PricingPage';
 import { BookDemo } from './pages/BookDemo';
 import { Login } from './pages/Login';
 import { Onboarding } from './pages/Onboarding';
+import { FloatingAIAssistant } from './components/ai/FloatingAIAssistant';
 
 export default function App() {
   return (
@@ -92,6 +93,9 @@ export default function App() {
         {/* Catch-all redirect to dashboard */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
+      
+      {/* Global Sticky AI Assistant Button & Chat Panel */}
+      <FloatingAIAssistant />
     </Router>
   );
 }

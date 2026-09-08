@@ -1,14 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, ArrowRight, LayoutDashboard, LogOut } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { FranchiseOpsLogo } from '../brand/FranchiseOpsLogo';
+import { getCurrentUser, logoutUser, UserAccount } from '../../services/tenantService';
 import { cn } from '../../lib/utils';
 
 export function GlobalHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(getCurrentUser());
   const location = useLocation();
   const isDashboard = location.pathname.startsWith('/dashboard');
+
+  useEffect(() => {
+    const handleAuth = () => setCurrentUser(getCurrentUser());
+    window.addEventListener('franchiseops_auth_changed', handleAuth);
+    return () => window.removeEventListener('franchiseops_auth_changed', handleAuth);
+  }, []);
+
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUser(null);
+  };
 
   return (
     <header className="sticky top-0 left-0 right-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs transition-all duration-200 select-none">
@@ -77,19 +90,45 @@ export function GlobalHeader() {
 
         {/* Right: Actions */}
         <div className="hidden sm:flex items-center gap-3">
-          {!isDashboard && (
-            <Link
-              to="/login"
-              className="text-sm font-semibold text-slate-700 hover:text-[#ff6b3d] px-3.5 py-2 rounded-lg hover:bg-slate-100/80 transition-all"
-            >
-              Sign In
-            </Link>
+          {currentUser ? (
+            <div className="flex items-center gap-2">
+              <Link to="/dashboard">
+                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-full px-4 py-2 shadow-sm flex items-center gap-1.5 transition-all">
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span>Go to Dashboard ({currentUser.businessName || currentUser.name.split(' ')[0]})</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Button>
+              </Link>
+              <button
+                onClick={handleLogout}
+                title="Log out"
+                className="p-2 text-slate-400 hover:text-rose-600 rounded-full hover:bg-rose-50 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <>
+              {!isDashboard && (
+                <Link
+                  to="/login"
+                  className={cn(
+                    "text-sm font-semibold px-3.5 py-2 rounded-lg transition-all",
+                    location.pathname === '/login'
+                      ? "text-[#ff6b3d] font-bold bg-orange-50"
+                      : "text-slate-700 hover:text-[#ff6b3d] hover:bg-slate-100/80"
+                  )}
+                >
+                  Sign In
+                </Link>
+              )}
+              <Link to="/demo">
+                <Button className="bg-[#ff6b3d] hover:bg-[#e85a2d] text-white font-semibold text-sm rounded-full px-5 py-2.5 shadow-md shadow-orange-500/25 transition-all hover:scale-105 active:scale-95">
+                  Book a Demo
+                </Button>
+              </Link>
+            </>
           )}
-          <Link to="/demo">
-            <Button className="bg-[#ff6b3d] hover:bg-[#e85a2d] text-white font-semibold text-sm rounded-full px-5 py-2.5 shadow-md shadow-orange-500/25 transition-all hover:scale-105 active:scale-95">
-              Book a Demo
-            </Button>
-          </Link>
         </div>
 
         {/* Mobile Menu Hamburger Button */}
@@ -140,24 +179,51 @@ export function GlobalHeader() {
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex items-center gap-3">
-            {!isDashboard && (
-              <Link
-                to="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex-1 text-center py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
-              >
-                Sign In
-              </Link>
+            {currentUser ? (
+              <div className="w-full flex items-center gap-2">
+                <Link
+                  to="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex-1"
+                >
+                  <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl py-2.5">
+                    Go to Dashboard
+                  </Button>
+                </Link>
+                <button
+                  onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                  className="p-2.5 text-slate-400 hover:text-rose-600 rounded-xl bg-slate-100"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                {!isDashboard && (
+                  <Link
+                    to="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      "flex-1 text-center py-2 text-sm font-semibold rounded-xl transition-colors",
+                      location.pathname === '/login'
+                        ? "text-[#ff6b3d] bg-orange-50 font-bold border border-orange-200"
+                        : "text-slate-700 bg-slate-100 hover:bg-slate-200"
+                    )}
+                  >
+                    Sign In
+                  </Link>
+                )}
+                <Link
+                  to="/demo"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex-1"
+                >
+                  <Button className="w-full bg-[#ff6b3d] hover:bg-[#e85a2d] text-white font-semibold text-sm rounded-xl py-2.5 shadow-md shadow-orange-500/25">
+                    Book a Demo
+                  </Button>
+                </Link>
+              </>
             )}
-            <Link
-              to="/demo"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex-1"
-            >
-              <Button className="w-full bg-[#ff6b3d] hover:bg-[#e85a2d] text-white font-semibold text-sm rounded-xl py-2.5 shadow-md shadow-orange-500/25">
-                Book a Demo
-              </Button>
-            </Link>
           </div>
         </div>
       )}
