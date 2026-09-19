@@ -169,3 +169,4 @@ export interface RevenueTrendAnalysis {
 }
 
 export * from './tenant';
+export * from './inventory';

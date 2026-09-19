@@ -7,7 +7,27 @@ import {
   get_outlet_benchmarks, 
   get_health_scores, 
   get_inventory_status, 
+  get_product_inventory,
+  get_inventory_movements,
+  get_sales_history,
+  get_sales_velocity,
+  get_inventory_forecast,
+  get_stockout_risk, 
+  get_overstock_risk,
+  calculate_reorder_point,
+  calculate_replenishment_quantity,
+  get_replenishment_recommendations,
+  get_outlet_inventory_comparison,
+  get_fast_slow_moving_products,
   get_inventory_risks, 
+  get_stock_ledger,
+  get_purchase_orders,
+  get_stock_transfers,
+  get_wastage_records,
+  get_wastage_analytics,
+  get_control_tower_summary,
+  get_stock_counts,
+  get_inventory_audit_logs,
   get_staff_performance, 
   get_staffing_status, 
   get_marketing_performance, 
@@ -419,78 +439,250 @@ export async function runBusinessAgentOrchestrator(
     };
   }
   else if (isInventoryQuery) {
-    intent = 'INVENTORY_RISK_ANALYSIS';
-    notifyStep('Scanning stock levels and safety buffer thresholds...', 'get_inventory_risks');
-    toolsCalled.push('get_inventory_status', 'get_inventory_risks');
-    dataSources.push('Inventory Buffer Logs', 'Supplier Catalogs');
+    const isTransferQuestion = q.includes('transfer') || q.includes('inter-branch') || q.includes('rebalance') || q.includes('from another outlet');
+    const isWastageQuestion = q.includes('waste') || q.includes('spoilage') || q.includes('damage') || q.includes('loss') || q.includes('shrinkage');
+    const isControlTowerQuestion = q.includes('control tower') || q.includes('action queue') || q.includes('supply chain overview');
+    const isLedgerQuestion = q.includes('ledger') || q.includes('movement history') || q.includes('audit trail') || q.includes('reconciliation');
+    const isPOQuestion = q.includes('purchase order') || q.includes('po status') || q.includes('open po') || q.includes('incoming delivery');
+    const isReorderQuestion = q.includes('reorder') || q.includes('how much to order') || q.includes('what should we order') || q.includes('replenishment');
+    const isForecastQuestion = q.includes('forecast') || q.includes('predict') || q.includes('demand') || q.includes('velocity') || q.includes('increasing');
+    const isOverstockQuestion = q.includes('overstock') || q.includes('excess') || q.includes('dead stock') || q.includes('slow moving');
+    const isValueQuestion = q.includes('value') || q.includes('worth') || q.includes('valuation') || q.includes('capital');
+    const isComparisonQuestion = q.includes('which outlet') || q.includes('highest risk') || q.includes('compare inventory');
 
-    const invRisks = get_inventory_risks(businessId);
-    const allStock = get_inventory_status(businessId);
+    intent = isTransferQuestion ? 'INVENTORY_TRANSFER_OPTIMIZATION' :
+             isWastageQuestion ? 'INVENTORY_WASTAGE_ANALYTICS' :
+             isControlTowerQuestion ? 'INVENTORY_CONTROL_TOWER' :
+             isLedgerQuestion ? 'INVENTORY_STOCK_LEDGER' :
+             isPOQuestion ? 'INVENTORY_PURCHASE_ORDERS' :
+             isReorderQuestion ? 'INVENTORY_REPLENISHMENT_RECOMMENDATION' :
+             isForecastQuestion ? 'INVENTORY_DEMAND_FORECAST' :
+             isOverstockQuestion ? 'INVENTORY_OVERSTOCK_DETECTION' :
+             isValueQuestion ? 'INVENTORY_VALUATION' : 'INVENTORY_RISK_ANALYSIS';
 
-    reasoningSteps.push(`Scanned ${allStock.length} SKUs across ${outlets.length} franchise locations.`);
-    reasoningSteps.push(`Identified ${invRisks.totalRisksCount} items below safety reorder threshold.`);
+    notifyStep('Querying live inventory status and operational ledger...', 'get_inventory_status');
+    toolsCalled.push('get_inventory_status', 'get_stockout_risk');
+    dataSources.push('Inventory Buffer Logs', 'Traceable Stock Movements', 'Purchase Orders', 'Transfers', 'Wastage Logs');
 
-    if (invRisks.totalRisksCount === 0) {
-      const answer = `All tracked inventory items across **${business.name}** are currently healthy and above safety thresholds.\n\n` +
-        `• **Total Monitored SKUs:** ${allStock.length}\n` +
-        `• **Stockout Risks:** 0\n` +
-        `• **Network Stock Buffer Status:** 100% compliant with standard 48-hour operational buffers.`;
+    const targetOutletId = targetOutlet ? targetOutlet.id : undefined;
+    const allStock = get_inventory_status(businessId, targetOutletId);
+    const stockoutRisks = get_stockout_risk(businessId, targetOutletId);
+    const recs = get_replenishment_recommendations(businessId, targetOutletId);
+    const forecasts = get_inventory_forecast(businessId, targetOutletId);
+    const movers = get_fast_slow_moving_products(businessId, targetOutletId);
+    const outletComps = get_outlet_inventory_comparison(businessId);
+    const pos = get_purchase_orders(businessId, targetOutletId ? { outletId: targetOutletId } : undefined);
+    const transfers = get_stock_transfers(businessId, targetOutletId ? { outletId: targetOutletId } : undefined);
+    const wastage = get_wastage_analytics(businessId);
+    const controlTower = get_control_tower_summary(businessId);
 
-      structuredResult = {
-        intent,
-        data_sources: dataSources,
-        tools_called: toolsCalled,
-        reasoning_steps: reasoningSteps,
-        key_metrics: [`Monitored SKUs: ${allStock.length}`, `Stockout Risks: 0`],
-        related_outlets: outlets.map(o => o.name),
-        insights: ['Supply chain buffers are currently stable across all units.'],
-        risks: [],
-        recommendations: ['Maintain regular weekly replenishment schedules.'],
-        answer,
-        isAiGenerated: false
-      };
-    } else {
-      const riskList = invRisks.risks.map(r => 
-        `• **${r.product_name}** at **${r.outlet_name}**:\n` +
-        `  Current Stock: **${r.current_stock} ${r.unit}** vs Minimum Safety Buffer of **${r.min_stock} ${r.unit}** (Burn Rate: ~${r.daily_consumption} ${r.unit}/day, Supplier: ${r.supplier})`
+    reasoningSteps.push(`Scanned ${allStock.length} SKU(s) across target scope.`);
+    reasoningSteps.push(`Evaluated stock depletion horizons, open POs, transfers, and wastage.`);
+
+    let answer = '';
+    const keyMetrics: string[] = [];
+    const relatedOutlets: string[] = [];
+    const insights: string[] = [];
+    const risks: string[] = [];
+    const recommendationsList: string[] = [];
+
+    if (isTransferQuestion) {
+      toolsCalled.push('get_stock_transfers', 'get_replenishment_recommendations');
+      const transferRecs = recs.filter(r => r.action_type === 'TRANSFER_FROM_OUTLET');
+      reasoningSteps.push(`Identified ${transferRecs.length} cost-saving transfer opportunities across network.`);
+
+      if (transferRecs.length === 0 && transfers.length === 0) {
+        answer = `### Stock Transfer Intelligence\n\nNo pending inter-outlet transfers or rebalancing requirements detected. Each outlet's demand is adequately covered without inter-branch relocation.`;
+      } else {
+        const transferList = transferRecs.map(t => 
+          `• **${t.product_name}**: Transfer **${t.recommended_quantity} ${t.unit}** from **${t.source_outlet_name}** (Excess Buffer) to **${t.outlet_name}** (Shortage Risk).\n` +
+          `  *Estimated Capital Saved:* ₹${t.estimated_cost.toLocaleString()} vs buying from external supplier.`
+        ).join('\n\n');
+
+        const activeTransfers = transfers.filter(t => t.status !== 'TRANSFER_RECEIPT');
+        const activeList = activeTransfers.length > 0 
+          ? `\n\n### In-Transit & Active Transfers:\n` + activeTransfers.map(t => `• Transfer **${t.transfer_number}**: ${t.quantity} ${t.unit} of ${t.product_name} (${t.source_outlet_name} ➔ ${t.destination_outlet_name}) [Status: ${t.status}]`).join('\n')
+          : '';
+
+        answer = `### Inter-Outlet Stock Transfer Optimization\n\n` +
+          `The AI Transfer Engine evaluated multi-outlet balances and formulated **${transferRecs.length} transfer recommendation(s)** to resolve shortages without placing vendor POs:\n\n` +
+          `${transferList || '• All shortages currently managed through active transfers or direct vendor POs.'}` +
+          `${activeList}\n\n` +
+          `**Decision Rule:** An inter-outlet transfer is triggered when a destination outlet has <7 days reserve while a source outlet maintains >35 days of stock.`;
+
+        keyMetrics.push(`Transfer Opportunities: ${transferRecs.length}`, `Active In-Transit: ${activeTransfers.length}`);
+      }
+    } else if (isWastageQuestion) {
+      toolsCalled.push('get_wastage_records', 'get_wastage_analytics');
+      reasoningSteps.push(`Aggregated wastage logs: ${wastage.totalWastageUnits} units across all outlets.`);
+
+      const topLoss = wastage.topLossProducts.map(p => `• **${p.product_name}**: ${p.quantity} ${p.unit} wasted (Impact: ₹${p.cost_impact.toLocaleString()})`).join('\n');
+      const reasons = wastage.byReasonBreakdown.map(r => `• **${r.reason}**: ₹${r.cost.toLocaleString()} (${r.percentage}%)`).join('\n');
+
+      answer = `### Wastage & Spoilage Loss Intelligence\n\n` +
+        `**Total Monthly Loss Cost:** **₹${wastage.totalCostImpact.toLocaleString()}** (${wastage.wastagePercentage}% of network stock value).\n` +
+        `**Trend Trajectory:** **${wastage.trendDirection}** (${wastage.trendChangePct > 0 ? '+' : ''}${wastage.trendChangePct}% vs previous cycle).\n\n` +
+        `### Top Loss SKUs:\n${topLoss || '• Zero critical waste recorded.'}\n\n` +
+        `### Loss Breakdown by Root Cause:\n${reasons || '• No loss breakdown available.'}\n\n` +
+        `**Recommendation:** Reinforce kitchen prep portioning and verify cold storage thermometer calibration.`;
+
+      keyMetrics.push(`Total Loss: ₹${wastage.totalCostImpact.toLocaleString()}`, `Wastage Rate: ${wastage.wastagePercentage}%`);
+    } else if (isControlTowerQuestion) {
+      toolsCalled.push('get_control_tower_summary');
+      reasoningSteps.push(`Synthesized executive Control Tower with ${controlTower.actionQueue.length} prioritized actions.`);
+
+      const queueList = controlTower.actionQueue.slice(0, 5).map(a => 
+        `• [${a.priority.toUpperCase()}] **${a.title}** (${a.outlet}): ${a.details} -> *Action: ${a.actionLabel}*`
+      ).join('\n');
+
+      answer = `### Executive Inventory Control Tower\n\n` +
+        `**Network Critical Overview:**\n` +
+        `• Critical Stockouts: **${controlTower.criticalStockoutsCount}**\n` +
+        `• Urgent Replenishments: **${controlTower.urgentReplenishmentsCount}**\n` +
+        `• Transfer Opportunities: **${controlTower.transferOpportunitiesCount}**\n` +
+        `• Total Capital Tied in Inventory: **₹${controlTower.totalTiedCapital.toLocaleString()}**\n\n` +
+        `### Prioritized Operational Action Queue:\n${queueList}`;
+
+      keyMetrics.push(`Action Items: ${controlTower.actionQueue.length}`, `Critical Stockouts: ${controlTower.criticalStockoutsCount}`);
+    } else if (isPOQuestion) {
+      toolsCalled.push('get_purchase_orders');
+      reasoningSteps.push(`Retrieved ${pos.length} purchase orders across scope.`);
+
+      const poList = pos.map(p => 
+        `• **${p.po_number}** (${p.supplier_name} ➔ ${p.outlet_name}): ₹${p.total_amount.toLocaleString()} [Status: **${p.status}**] - Expected: ${p.expected_delivery}`
+      ).join('\n');
+
+      answer = `### Purchase Orders & Inbound Supply Status\n\n` +
+        `Found **${pos.length} purchase order(s)**:\n\n${poList || '• No purchase orders registered.'}`;
+
+      keyMetrics.push(`Total POs: ${pos.length}`, `Pending Delivery: ${pos.filter(p => p.status === 'ORDERED' || p.status === 'PARTIALLY_RECEIVED').length}`);
+    } else if (isReorderQuestion) {
+      toolsCalled.push('calculate_reorder_point', 'calculate_replenishment_quantity', 'get_replenishment_recommendations');
+      reasoningSteps.push(`Calculated deterministic reorder points and evaluated Buy vs Transfer for ${recs.length} item(s).`);
+
+      if (recs.length === 0) {
+        answer = `### Automated Replenishment Assessment\n\n` +
+          `No urgent replenishment actions required at this time for **${targetOutlet ? targetOutlet.name : business.name}**.\n\n` +
+          `All tracked SKUs maintain sufficient buffer levels to bridge supplier lead times.`;
+      } else {
+        const recList = recs.map(r => 
+          `• **${r.product_name}** at **${r.outlet_name}** [${r.priority.toUpperCase()} - ${r.action_type}]:\n` +
+          `  Current Stock: **${r.current_stock} ${r.unit}** (~${r.days_remaining}d remaining)\n` +
+          `  **Recommended Action:** **${r.action_type === 'TRANSFER_FROM_OUTLET' ? `Transfer +${r.recommended_quantity} ${r.unit} from ${r.source_outlet_name}` : `Reorder +${r.recommended_quantity} ${r.unit} from ${r.supplier}`}** (Est. Value: ₹${r.estimated_cost.toLocaleString()})\n` +
+          `  *Reason:* ${r.reason}`
+        ).join('\n\n');
+
+        const totalCost = recs.reduce((s, r) => s + r.estimated_cost, 0);
+
+        answer = `### Autonomous Replenishment Decisions (${targetOutlet ? targetOutlet.name : business.name})\n\n` +
+          `The Inventory Agent evaluated stock horizons against supplier lead times and inter-branch availability, generating **${recs.length} replenishment decision(s)** totaling **₹${totalCost.toLocaleString()}**:\n\n` +
+          `${recList}\n\n` +
+          `**Smart Decision Engine:** Automatically evaluates whether excess stock is available at a sibling outlet before proposing external supplier procurement.`;
+
+        keyMetrics.push(`Replenishments: ${recs.length} SKUs`, `Total Est. Value: ₹${totalCost.toLocaleString()}`);
+        recommendationsList.push(...recs.map(r => `${r.action_type === 'TRANSFER_FROM_OUTLET' ? 'Transfer' : 'Reorder'} +${r.recommended_quantity} ${r.unit} of ${r.product_name}`));
+      }
+    } else if (isForecastQuestion) {
+      toolsCalled.push('get_sales_velocity', 'get_inventory_forecast');
+      reasoningSteps.push(`Generated 7-day demand projections and sales velocity trends.`);
+
+      const forecastList = forecasts.slice(0, 5).map(f => 
+        `• **${f.product_name}** (${f.outlet_name}):\n` +
+        `  Daily Demand: **${f.avg_daily_demand} ${f.unit}/day** (Trend: **${f.demand_trend}**)\n` +
+        `  7-Day Forecasted Volume: **${f.forecasted_demand_7d} ${f.unit}** | Depletion Horizon: **~${f.days_remaining} days remaining**`
       ).join('\n\n');
 
-      const answer = `### Critical Supply Chain & Inventory Alert\n\n` +
-        `Currently, **${invRisks.totalRisksCount} item(s)** across **${invRisks.criticalOutlets.join(', ')}** are at acute stockout risk:\n\n` +
-        `${riskList}\n\n` +
-        `**Operational Impact:** Stockouts on signature ingredients directly translate to unfulfilled customer tickets and lost revenue during peak shifts.\n\n` +
-        `**Recommended Action:** Dispatch expedited purchase orders to primary suppliers immediately before evening peak hours.`;
+      answer = `### Dynamic Demand Forecasting & Velocity Report\n\n` +
+        `Forward demand projections calculated from historical sales velocity:\n\n` +
+        `${forecastList}\n\n` +
+        `**Key Trend Insight:** Products with increasing velocity will require buffer scaling before weekend peak dining surges.`;
 
-      structuredResult = {
-        intent,
-        data_sources: dataSources,
-        tools_called: toolsCalled,
-        reasoning_steps: reasoningSteps,
-        key_metrics: [
-          `Stockout Items: ${invRisks.totalRisksCount} SKUs`,
-          `Affected Outlets: ${invRisks.criticalOutlets.length}`,
-          `Total Monitored: ${allStock.length} SKUs`
-        ],
-        related_outlets: invRisks.criticalOutlets,
-        insights: [
-          `Acute stock shortages detected in ${invRisks.criticalOutlets.join(', ')}.`
-        ],
-        risks: [
-          `Immediate risk of lost weekend menu sales if supplier replenishment is delayed.`
-        ],
-        recommendations: [
-          `Approve and dispatch emergency purchase orders to primary suppliers.`
-        ],
-        suggested_action: {
-          label: 'Approve & Dispatch Emergency PO',
-          actionType: 'dispatch_po',
-          payload: { items: invRisks.risks.map(r => r.product_name) }
-        },
-        answer,
-        isAiGenerated: false
-      };
+      keyMetrics.push(`Analyzed SKUs: ${forecasts.length}`, `Surging Items: ${forecasts.filter(f => f.demand_trend === 'Increasing').length}`);
+    } else if (isOverstockQuestion) {
+      toolsCalled.push('get_overstock_risk', 'get_fast_slow_moving_products');
+      const overstocked = movers.filter(m => m.turnover_type === 'Slow Moving' || m.turnover_type === 'Dead Stock');
+      reasoningSteps.push(`Detected ${overstocked.length} overstocked or slow-moving items.`);
+
+      if (overstocked.length === 0) {
+        answer = `No excessive overstock or dead stock detected across **${targetOutlet ? targetOutlet.name : business.name}**. Turnover velocity is within standard SOP limits.`;
+      } else {
+        const overList = overstocked.map(o => 
+          `• **${o.product_name}** at **${o.outlet_name}** [${o.turnover_type}]:\n` +
+          `  Current Stock: **${o.current_stock} ${o.unit}** (Valuation: ₹${o.inventory_value.toLocaleString()}, Holding Cover: ~${o.days_remaining} days)\n` +
+          `  *Recommendation:* ${o.recommendation_note}`
+        ).join('\n\n');
+
+        answer = `### Excess Inventory & Overstock Diagnostic\n\n` +
+          `Identified **${overstocked.length} item(s)** tying up working capital with extended holding cover:\n\n` +
+          `${overList}\n\n` +
+          `**Corrective Action:** Halt replenishment for these items and evaluate inter-branch inventory transfers.`;
+
+        keyMetrics.push(`Overstocked SKUs: ${overstocked.length}`, `Tied Capital: ₹${overstocked.reduce((s, o) => s + o.inventory_value, 0).toLocaleString()}`);
+      }
+    } else if (isComparisonQuestion) {
+      toolsCalled.push('get_outlet_inventory_comparison');
+      reasoningSteps.push(`Compared inventory health and critical risk counts across ${outletComps.length} outlets.`);
+
+      const worstOutlet = [...outletComps].sort((a, b) => (b.critical_count + b.out_of_stock_count) - (a.critical_count + a.out_of_stock_count))[0];
+      const compList = outletComps.map(o => 
+        `• **${o.outlet_name}** (${o.city}):\n` +
+        `  Valuation: ₹${o.total_inventory_value.toLocaleString()} | Healthy: ${o.healthy_count} | Low: ${o.low_stock_count} | **Critical/OOS: ${o.critical_count + o.out_of_stock_count}**`
+      ).join('\n\n');
+
+      answer = `### Multi-Outlet Inventory Risk & Health Comparison\n\n` +
+        `**Highest Risk Outlet:** **${worstOutlet.outlet_name}** with **${worstOutlet.critical_count + worstOutlet.out_of_stock_count} critical/OOS shortage(s)**.\n\n` +
+        `### Franchise Network Overview:\n` +
+        `${compList}`;
+
+      keyMetrics.push(`Highest Risk: ${worstOutlet.outlet_name}`, `Total Outlets: ${outletComps.length}`);
+      relatedOutlets.push(worstOutlet.outlet_name);
+    } else {
+      // General Stockout / Inventory Status
+      toolsCalled.push('get_stockout_risk');
+      const criticalRisks = stockoutRisks.filter(r => r.risk_level === 'CRITICAL' || r.risk_level === 'HIGH');
+      reasoningSteps.push(`Identified ${criticalRisks.length} items at critical or high stockout risk.`);
+
+      if (criticalRisks.length === 0) {
+        answer = `All monitored SKUs in **${targetOutlet ? targetOutlet.name : business.name}** are currently in healthy stock condition. Zero critical stockouts detected.`;
+      } else {
+        const riskList = criticalRisks.map(r => 
+          `• **${r.product_name}** at **${r.outlet_name}** [${r.risk_level}]:\n` +
+          `  Stock On-Hand: **${r.current_stock} ${r.unit}** (~${r.days_remaining}d remaining, Lead Time: ${r.supplier_lead_time}d)\n` +
+          `  *Risk Diagnosis:* ${r.explanation}\n` +
+          `  *Suggested Action:* ${r.suggested_action}`
+        ).join('\n\n');
+
+        answer = `### Real-Time Inventory & Stockout Diagnostic\n\n` +
+          `Found **${criticalRisks.length} SKU(s)** requiring immediate inventory management intervention:\n\n` +
+          `${riskList}\n\n` +
+          `**Operational Impact:** Unresolved stockouts on core recipe ingredients will disrupt kitchen service during peak order volume.`;
+
+        keyMetrics.push(`Critical Risks: ${criticalRisks.length} SKUs`, `Total Monitored: ${allStock.length} SKUs`);
+        relatedOutlets.push(...Array.from(new Set(criticalRisks.map(r => r.outlet_name))));
+        risks.push(...criticalRisks.map(r => `${r.product_name} at ${r.outlet_name} risks stockout in ~${r.days_remaining}d`));
+      }
     }
+
+    structuredResult = {
+      intent,
+      data_sources: dataSources,
+      tools_called: toolsCalled,
+      reasoning_steps: reasoningSteps,
+      key_metrics: keyMetrics.length > 0 ? keyMetrics : [`Monitored Items: ${allStock.length}`],
+      related_outlets: relatedOutlets.length > 0 ? relatedOutlets : outlets.map(o => o.name),
+      insights,
+      risks,
+      recommendations: recommendationsList.length > 0 ? recommendationsList : ['Review inventory health in the Inventory Intelligence Dashboard.'],
+      suggested_action: recs.length > 0 ? {
+        label: 'View Replenishment Requisitions',
+        actionType: 'navigate_inventory_reorder',
+        payload: { outletId: targetOutletId }
+      } : undefined,
+      answer,
+      isAiGenerated: false
+    };
   }
+
   else if (isStaffQuery) {
     intent = 'STAFFING_WORKFORCE_ANALYSIS';
     notifyStep('Inspecting workforce rosters and shift attendance...', 'get_staffing_status');

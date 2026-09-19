@@ -10,13 +10,36 @@ import {
   UnderperformanceDetection,
   CrossDomainInsight,
   Recommendation,
-  BusinessProfile
+  BusinessProfile,
+  InventoryItemEnhanced,
+  DemandForecastResult,
+  StockoutRiskAssessment,
+  ReplenishmentRecommendation,
+  FastSlowMovingProduct,
+  OutletInventoryComparison,
+  InventoryMovement,
+  ProductStockLedger,
+  PurchaseOrder,
+  StockTransfer,
+  StockCountSession,
+  WastageRecord,
+  WastageSummary,
+  ControlTowerSummary,
+  InventoryAuditLogEntry
 } from '../types';
 import { 
   getActiveBusiness, 
   getTenantOutlets, 
   getTenantSales, 
   getTenantInventory, 
+  getTenantInventoryEnhanced,
+  getTenantMovements,
+  getTenantRecommendationsEnhanced,
+  getTenantPurchaseOrders,
+  getTenantTransfers,
+  getTenantStockCounts,
+  getTenantWastage,
+  getTenantInventoryAuditLogs,
   getTenantStaff, 
   getTenantMarketing, 
   getTenantAudits, 
@@ -25,6 +48,17 @@ import {
 } from './tenantService';
 import { getTenantInsights, getTenantRecommendations } from './franchiseIntelligenceEngine';
 import { getBenchmarkingData, analyzeRevenueTrends, getUnderperformingDetections } from './outletPerformanceService';
+import { 
+  forecastProductDemand, 
+  detectStockoutRisks, 
+  generateSmartReplenishmentDecisions, 
+  identifyFastAndSlowMovers, 
+  compareOutletsInventory,
+  calculateProductDemandAndVelocity,
+  calculateProductStockLedger,
+  calculateWastageSummary,
+  calculateControlTowerSummary
+} from './inventoryEngine';
 
 /**
  * Reusable AI Tools / Function Calling Layer for FranchiseOps AI.
@@ -133,19 +167,207 @@ export async function get_health_scores(businessId: string): Promise<{
   };
 }
 
-export function get_inventory_status(businessId: string, outletId?: string): InventoryRecord[] {
-  const inventory = getTenantInventory(businessId);
+export function get_inventory_status(businessId: string, outletId?: string): InventoryItemEnhanced[] {
+  const inventory = getTenantInventoryEnhanced(businessId);
   if (!outletId) return inventory;
   return inventory.filter(i => i.outlet_id === outletId);
 }
 
+export function get_product_inventory(businessId: string, productIdOrName: string): InventoryItemEnhanced[] {
+  const inventory = getTenantInventoryEnhanced(businessId);
+  const qLower = productIdOrName.toLowerCase();
+  return inventory.filter(i => 
+    i.product_id?.toLowerCase() === qLower || 
+    i.id.toLowerCase() === qLower ||
+    i.product_name.toLowerCase().includes(qLower) ||
+    i.sku.toLowerCase().includes(qLower)
+  );
+}
+
+export function get_inventory_movements(businessId: string, outletId?: string, productId?: string): InventoryMovement[] {
+  const movements = getTenantMovements(businessId);
+  return movements.filter(m => {
+    if (outletId && m.outlet_id !== outletId) return false;
+    if (productId && m.product_id !== productId) return false;
+    return true;
+  });
+}
+
+export function get_sales_history(businessId: string, outletId?: string, productId?: string): SalesRecord[] {
+  const sales = getTenantSales(businessId);
+  if (!outletId) return sales;
+  return sales.filter(s => s.outlet_id === outletId);
+}
+
+export function get_sales_velocity(businessId: string, outletId?: string, productId?: string): Array<{
+  product_name: string;
+  outlet_name: string;
+  daily_demand: number;
+  weekly_demand: number;
+  trend: 'Increasing' | 'Stable' | 'Decreasing';
+  velocity_change_pct: number;
+}> {
+  const inventory = getTenantInventoryEnhanced(businessId);
+  const sales = getTenantSales(businessId);
+  const movements = getTenantMovements(businessId);
+
+  const filtered = inventory.filter(i => {
+    if (outletId && i.outlet_id !== outletId) return false;
+    if (productId && i.product_id !== productId && i.id !== productId && !i.product_name.toLowerCase().includes(productId.toLowerCase())) return false;
+    return true;
+  });
+
+  return filtered.map(item => {
+    const res = calculateProductDemandAndVelocity(item, sales, movements);
+    return {
+      product_name: item.product_name,
+      outlet_name: item.outlet_name,
+      daily_demand: res.dailyDemand,
+      weekly_demand: res.demand7d,
+      trend: res.velocityTrend,
+      velocity_change_pct: res.velocityChangePct,
+    };
+  });
+}
+
+export function get_inventory_forecast(businessId: string, outletId?: string, productId?: string): DemandForecastResult[] {
+  const inventory = getTenantInventoryEnhanced(businessId);
+  const sales = getTenantSales(businessId);
+  const movements = getTenantMovements(businessId);
+
+  const filtered = inventory.filter(i => {
+    if (outletId && i.outlet_id !== outletId) return false;
+    if (productId && i.product_id !== productId && i.id !== productId && !i.product_name.toLowerCase().includes(productId.toLowerCase())) return false;
+    return true;
+  });
+
+  return filtered.map(item => forecastProductDemand(item, sales, movements, 7));
+}
+
+export function get_stockout_risk(businessId: string, outletId?: string): StockoutRiskAssessment[] {
+  const inventory = getTenantInventoryEnhanced(businessId);
+  const sales = getTenantSales(businessId);
+  const risks = detectStockoutRisks(inventory, sales);
+  if (!outletId) return risks;
+  return risks.filter(r => r.outlet_id === outletId);
+}
+
+export function get_overstock_risk(businessId: string, outletId?: string): FastSlowMovingProduct[] {
+  const inventory = getTenantInventoryEnhanced(businessId);
+  const sales = getTenantSales(businessId);
+  const movers = identifyFastAndSlowMovers(inventory, sales);
+  const overstocked = movers.filter(m => m.turnover_type === 'Slow Moving' || m.turnover_type === 'Dead Stock');
+  if (!outletId) return overstocked;
+  const outName = getTenantOutlets(businessId).find(o => o.id === outletId)?.name || '';
+  return overstocked.filter(o => o.outlet_name === outName);
+}
+
+export function calculate_reorder_point(dailyDemand: number, leadTimeDays: number, safetyStock: number): number {
+  const leadTimeDemand = dailyDemand * leadTimeDays;
+  return Math.round(leadTimeDemand + safetyStock);
+}
+
+export function calculate_replenishment_quantity(currentStock: number, targetStock: number, leadTimeDemand: number): number {
+  const deficit = targetStock - currentStock;
+  return Math.max(0, Math.ceil(deficit));
+}
+
+export function get_replenishment_recommendations(businessId: string, outletId?: string): ReplenishmentRecommendation[] {
+  const inventory = getTenantInventoryEnhanced(businessId);
+  const sales = getTenantSales(businessId);
+  const pos = getTenantPurchaseOrders(businessId);
+  const outlets = getTenantOutlets(businessId);
+  const recs = generateSmartReplenishmentDecisions(inventory, pos, outlets, sales);
+  if (!outletId) return recs;
+  return recs.filter(r => r.outlet_id === outletId);
+}
+
+export function get_stock_ledger(businessId: string, productId: string, outletId?: string): ProductStockLedger[] {
+  const inventory = getTenantInventoryEnhanced(businessId);
+  const movements = getTenantMovements(businessId);
+  const targetItems = inventory.filter(i => 
+    (i.product_id === productId || i.id === productId || i.sku.toLowerCase() === productId.toLowerCase() || i.product_name.toLowerCase().includes(productId.toLowerCase())) &&
+    (!outletId || i.outlet_id === outletId)
+  );
+
+  return targetItems.map(item => calculateProductStockLedger(item, movements));
+}
+
+export function get_purchase_orders(businessId: string, filter?: { outletId?: string; status?: string }): PurchaseOrder[] {
+  const pos = getTenantPurchaseOrders(businessId);
+  if (!filter) return pos;
+  return pos.filter(p => {
+    if (filter.outletId && p.outlet_id !== filter.outletId) return false;
+    if (filter.status && p.status !== filter.status) return false;
+    return true;
+  });
+}
+
+export function get_stock_transfers(businessId: string, filter?: { outletId?: string; status?: string }): StockTransfer[] {
+  const transfers = getTenantTransfers(businessId);
+  if (!filter) return transfers;
+  return transfers.filter(t => {
+    if (filter.outletId && t.source_outlet_id !== filter.outletId && t.destination_outlet_id !== filter.outletId) return false;
+    if (filter.status && t.status !== filter.status) return false;
+    return true;
+  });
+}
+
+export function get_wastage_records(businessId: string, outletId?: string): WastageRecord[] {
+  const wastage = getTenantWastage(businessId);
+  if (!outletId) return wastage;
+  return wastage.filter(w => w.outlet_id === outletId);
+}
+
+export function get_wastage_analytics(businessId: string): WastageSummary {
+  const wastage = getTenantWastage(businessId);
+  return calculateWastageSummary(wastage);
+}
+
+export function get_control_tower_summary(businessId: string): ControlTowerSummary {
+  const inventory = getTenantInventoryEnhanced(businessId);
+  const sales = getTenantSales(businessId);
+  const pos = getTenantPurchaseOrders(businessId);
+  const outlets = getTenantOutlets(businessId);
+  const transfers = getTenantTransfers(businessId);
+  const wastage = getTenantWastage(businessId);
+  const recs = generateSmartReplenishmentDecisions(inventory, pos, outlets, sales);
+  const risks = detectStockoutRisks(inventory, sales, pos);
+  return calculateControlTowerSummary(inventory, recs, risks, pos, transfers, wastage);
+}
+
+export function get_stock_counts(businessId: string, outletId?: string): StockCountSession[] {
+  const counts = getTenantStockCounts(businessId);
+  if (!outletId) return counts;
+  return counts.filter(c => c.outlet_id === outletId);
+}
+
+export function get_inventory_audit_logs(businessId: string): InventoryAuditLogEntry[] {
+  return getTenantInventoryAuditLogs(businessId);
+}
+
+export function get_outlet_inventory_comparison(businessId: string): OutletInventoryComparison[] {
+  const inventory = getTenantInventoryEnhanced(businessId);
+  const outlets = getTenantOutlets(businessId);
+  return compareOutletsInventory(inventory, outlets);
+}
+
+export function get_fast_slow_moving_products(businessId: string, outletId?: string): FastSlowMovingProduct[] {
+  const inventory = getTenantInventoryEnhanced(businessId);
+  const sales = getTenantSales(businessId);
+  const movers = identifyFastAndSlowMovers(inventory, sales);
+  if (!outletId) return movers;
+  const outName = getTenantOutlets(businessId).find(o => o.id === outletId)?.name || '';
+  return movers.filter(m => m.outlet_name === outName);
+}
+
 export function get_inventory_risks(businessId: string): {
-  risks: InventoryRecord[];
+  risks: InventoryItemEnhanced[];
   totalRisksCount: number;
   criticalOutlets: string[];
 } {
-  const inventory = getTenantInventory(businessId);
-  const risks = inventory.filter(i => i.status === 'Stockout Risk' || i.current_stock < i.min_stock);
+  const inventory = getTenantInventoryEnhanced(businessId);
+  const risks = inventory.filter(i => i.status === 'CRITICAL' || i.status === 'OUT OF STOCK' || i.status === 'LOW STOCK');
   const criticalOutlets = Array.from(new Set(risks.map(r => r.outlet_name)));
   return {
     risks,
@@ -153,6 +375,7 @@ export function get_inventory_risks(businessId: string): {
     criticalOutlets,
   };
 }
+
 
 export function get_staff_performance(businessId: string, outletId?: string): StaffRecord[] {
   const staff = getTenantStaff(businessId);
@@ -432,7 +655,7 @@ export async function rank_outlets(
 
 export async function detect_anomalies(businessId: string): Promise<{
   underperforming: UnderperformanceDetection[];
-  inventoryAnomalies: InventoryRecord[];
+  inventoryAnomalies: InventoryItemEnhanced[] | InventoryRecord[];
   workforceAnomalies: StaffRecord[];
   auditAnomalies: AuditRecord[];
 }> {

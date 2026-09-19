@@ -2,23 +2,15 @@ import { Outlet, OutletPerformance, AIInsight, Recommendation, Alert, AgentRun }
 import { subDays, formatISO } from 'date-fns';
 
 export const mockOutlets: Outlet[] = [
-  { id: 'out_1', franchise_id: 'f_1', name: 'Biryani Hub - Gachibowli', location: 'Gachibowli', city: 'Hyderabad', state: 'Telangana', manager_name: 'Rahul Sharma', status: 'Active' },
-  { id: 'out_2', franchise_id: 'f_1', name: 'Biryani Hub - Indiranagar', location: 'Indiranagar', city: 'Bengaluru', state: 'Karnataka', manager_name: 'Priya Reddy', status: 'Warning' },
-  { id: 'out_3', franchise_id: 'f_1', name: 'Biryani Hub - T Nagar', location: 'T Nagar', city: 'Chennai', state: 'Tamil Nadu', manager_name: 'Karthik Iyer', status: 'Active' },
-  { id: 'out_4', franchise_id: 'f_1', name: 'Biryani Hub - Bandra', location: 'Bandra', city: 'Mumbai', state: 'Maharashtra', manager_name: 'Amit Patel', status: 'Active' },
-  { id: 'out_5', franchise_id: 'f_1', name: 'Biryani Hub - KP', location: 'Koregaon Park', city: 'Pune', state: 'Maharashtra', manager_name: 'Neha Desai', status: 'Warning' },
-  { id: 'out_6', franchise_id: 'f_1', name: 'Biryani Hub - Benz Circle', location: 'Benz Circle', city: 'Vijayawada', state: 'Andhra Pradesh', manager_name: 'Srinivas Rao', status: 'Active' },
-  { id: 'out_7', franchise_id: 'f_1', name: 'Biryani Hub - MVP Colony', location: 'MVP Colony', city: 'Visakhapatnam', state: 'Andhra Pradesh', manager_name: 'Anjali Verma', status: 'Active' },
+  { id: 'out_1', franchise_id: 'biz_biryani_express_01', name: 'Biryani Express – Indiranagar', location: '100ft Road, Indiranagar', city: 'Bengaluru', state: 'Karnataka', manager_name: 'Rahul Sharma', status: 'Active' },
+  { id: 'out_2', franchise_id: 'biz_biryani_express_01', name: 'Biryani Express – Koramangala', location: '5th Block, Koramangala', city: 'Bengaluru', state: 'Karnataka', manager_name: 'Priya Reddy', status: 'Active' },
+  { id: 'out_3', franchise_id: 'biz_biryani_express_01', name: 'Biryani Express – HSR Layout', location: 'Sector 3, HSR Layout', city: 'Bengaluru', state: 'Karnataka', manager_name: 'Karthik Iyer', status: 'Active' },
 ];
 
 export const mockPerformances: OutletPerformance[] = [
   { outlet_id: 'out_1', period: '2023-10', revenue: 2450000, previous_revenue: 2200000, target_revenue: 2300000, orders: 4900, customers: 4100, revenue_growth: 11.36, target_achievement: 106.5, aov: 500, health_score: 92, performance_status: 'Excellent' },
   { outlet_id: 'out_2', period: '2023-10', revenue: 1850000, previous_revenue: 2150000, target_revenue: 2400000, orders: 3800, customers: 3200, revenue_growth: -13.95, target_achievement: 77.08, aov: 486, health_score: 64, performance_status: 'Average' },
   { outlet_id: 'out_3', period: '2023-10', revenue: 3100000, previous_revenue: 2850000, target_revenue: 3000000, orders: 6100, customers: 5300, revenue_growth: 8.77, target_achievement: 103.3, aov: 508, health_score: 88, performance_status: 'Good' },
-  { outlet_id: 'out_4', period: '2023-10', revenue: 4200000, previous_revenue: 3900000, target_revenue: 4500000, orders: 7800, customers: 6900, revenue_growth: 7.69, target_achievement: 93.3, aov: 538, health_score: 82, performance_status: 'Good' },
-  { outlet_id: 'out_5', period: '2023-10', revenue: 1450000, previous_revenue: 1750000, target_revenue: 2000000, orders: 3100, customers: 2800, revenue_growth: -17.14, target_achievement: 72.5, aov: 467, health_score: 58, performance_status: 'Poor' },
-  { outlet_id: 'out_6', period: '2023-10', revenue: 1950000, previous_revenue: 1800000, target_revenue: 1800000, orders: 4200, customers: 3800, revenue_growth: 8.33, target_achievement: 108.3, aov: 464, health_score: 90, performance_status: 'Excellent' },
-  { outlet_id: 'out_7', period: '2023-10', revenue: 2100000, previous_revenue: 2050000, target_revenue: 2200000, orders: 4300, customers: 3900, revenue_growth: 2.43, target_achievement: 95.4, aov: 488, health_score: 79, performance_status: 'Good' },
 ];
 
 export const mockInsights: AIInsight[] = [

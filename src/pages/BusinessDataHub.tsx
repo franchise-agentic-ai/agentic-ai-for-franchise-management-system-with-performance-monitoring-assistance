@@ -148,8 +148,12 @@ export function BusinessDataHub() {
           { key: 'sku', label: 'SKU Code', required: true },
           { key: 'category', label: 'Category', required: true },
           { key: 'current_stock', label: 'Current Stock', required: true },
-          { key: 'min_stock', label: 'Min Safety Stock', required: true },
+          { key: 'min_stock', label: 'Min Safety Buffer', required: true },
+          { key: 'daily_consumption', label: 'Daily Burn Rate', required: false },
+          { key: 'unit', label: 'Unit (kg/litres/units)', required: false },
           { key: 'supplier', label: 'Supplier Name', required: true },
+          { key: 'lead_time_days', label: 'Supplier Lead Time (Days)', required: false },
+          { key: 'unit_cost', label: 'Unit Cost (₹)', required: false },
         ];
       case 'staff':
         return [
@@ -184,9 +188,35 @@ export function BusinessDataHub() {
       importSalesBatch(activeBusiness.id, records);
       loadAllData();
       return records.length;
+    } else if (currentTab === 'inventory') {
+      rows.forEach((r, i) => {
+        const out = outlets.find(o => o.name.toLowerCase().includes(r.outlet_name?.toLowerCase())) || outlets[0];
+        const currentStock = Number(r.current_stock) || 100;
+        const minStock = Number(r.min_stock) || 50;
+        const status = currentStock === 0 ? 'Stockout Risk' : currentStock <= minStock ? 'Low Stock' : 'In Stock';
+        addTenantInventory(activeBusiness.id, {
+          outlet_id: out?.id || `out_${i}`,
+          outlet_name: out?.name || r.outlet_name || 'Outlet',
+          product_name: r.product_name || 'Inventory Item',
+          sku: r.sku || `SKU-IMP-${i + 100}`,
+          category: r.category || 'Grains & Staples',
+          current_stock: currentStock,
+          min_stock: minStock,
+          max_stock: Number(r.max_stock) || minStock * 3,
+          daily_consumption: Number(r.daily_consumption) || 10,
+          waste_qty: 0,
+          unit: r.unit || 'kg',
+          supplier: r.supplier || 'Primary Supplier',
+          last_restocked: new Date().toISOString().split('T')[0],
+          status: status,
+        });
+      });
+      loadAllData();
+      return rows.length;
     }
     return rows.length;
   };
+
 
   return (
     <div className="space-y-8 pb-12">
