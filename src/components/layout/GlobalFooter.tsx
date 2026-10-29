@@ -50,12 +50,11 @@ export function GlobalFooter() {
           <div className="space-y-3">
             <h4 className="text-xs font-bold text-white uppercase tracking-wider">Solutions</h4>
             <ul className="space-y-2.5 text-xs sm:text-sm">
-              <li><Link to="/dashboard/outlets" className="hover:text-orange-400 transition-colors">Franchise Operations</Link></li>
-              <li><Link to="/dashboard/outlets?tab=performance" className="hover:text-orange-400 transition-colors">Outlet Performance</Link></li>
-              <li><Link to="/dashboard/inventory?tab=forecast" className="hover:text-orange-400 transition-colors">Inventory Intelligence</Link></li>
-              <li><Link to="/dashboard/staff?tab=insights" className="hover:text-orange-400 transition-colors">Workforce Intelligence</Link></li>
-              <li><Link to="/dashboard/finance?tab=profitability" className="hover:text-orange-400 transition-colors">Financial Intelligence</Link></li>
-              <li><Link to="/dashboard/recommendations" className="hover:text-orange-400 transition-colors">AI Recommendations</Link></li>
+              <li><Link to="/solutions/franchise-growth" className="hover:text-orange-400 transition-colors">Franchise Growth Hub</Link></li>
+              <li><Link to="/solutions/sop-playbook" className="hover:text-orange-400 transition-colors">SOP & Playbook Center</Link></li>
+              <li><Link to="/solutions/operations-intelligence" className="hover:text-orange-400 transition-colors">Operations Intelligence Hub</Link></li>
+              <li><Link to="/solutions/compliance-audit" className="hover:text-orange-400 transition-colors">Compliance & Audit Center</Link></li>
+              <li><Link to="/solutions/team-onboarding" className="hover:text-orange-400 transition-colors">Team Onboarding Hub</Link></li>
             </ul>
           </div>
 

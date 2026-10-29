@@ -27,7 +27,9 @@ import {
   Package,
   Users,
   Activity,
-  Lock
+  Lock,
+  ArrowDown,
+  Square
 } from 'lucide-react';
 import { FranchiseOpsLogo } from '../brand/FranchiseOpsLogo';
 import { getActiveBusiness, getCurrentUser } from '../../services/tenantService';
@@ -49,6 +51,11 @@ import {
   TARGET_SUPPORT_EMAIL, 
   SupportTicket 
 } from '../../services/ticketService';
+import { 
+  classifyConversationIntent, 
+  generateCasualReply, 
+  generateIntroductionReply 
+} from '../../services/intentClassifier';
 import { BusinessProfile } from '../../types';
 import { cn } from '../../lib/utils';
 
@@ -84,10 +91,17 @@ export function FloatingAIAssistant() {
 
   // Selected language state: 'en' | 'te' | 'hi' | 'ta'
   const [selectedLang, setSelectedLang] = useState<SupportedLanguage>('en');
-  const [isVoiceOutputEnabled, setIsVoiceOutputEnabled] = useState(true);
+  // Opt-in voice reader: Default state is strictly OFF
+  const [isVoiceReaderEnabled, setIsVoiceReaderEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
+
+  // Dedicated container scroll tracking (threshold 80px, no window scrolling)
+  const [showScrollToLatest, setShowScrollToLatest] = useState(false);
+  const isNearBottomRef = useRef<boolean>(true);
+  const speechGenerationRef = useRef<number>(0);
 
   // Ticket / Complaint Form State
   const [showTicketModal, setShowTicketModal] = useState(false);
@@ -101,10 +115,60 @@ export function FloatingAIAssistant() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const speechRecognitionRef = useRef<any>(null);
+
+  // Stop all speech synthesis immediately and invalidate callbacks
+  const stopAllSpeech = () => {
+    speechGenerationRef.current++;
+    stopSpeaking();
+    setIsSpeaking(false);
+    setSpeakingMessageId(null);
+  };
+
+  // Speak a specific assistant message with cancellation tracking
+  const speakAssistantMessage = (messageId: string, text: string, lang: SupportedLanguage) => {
+    stopAllSpeech();
+    const currentGen = ++speechGenerationRef.current;
+    setSpeakingMessageId(messageId);
+    setIsSpeaking(true);
+
+    speakText(text, lang, () => {
+      if (currentGen === speechGenerationRef.current) {
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      }
+    });
+  };
+
+  // Dedicated scroll listener on the inner messages container
+  const handleChatScroll = () => {
+    const el = chatScrollContainerRef.current;
+    if (!el) return;
+    const threshold = 80;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const isNear = distanceFromBottom <= threshold;
+    isNearBottomRef.current = isNear;
+    if (!isNear && !showScrollToLatest) {
+      setShowScrollToLatest(true);
+    } else if (isNear && showScrollToLatest) {
+      setShowScrollToLatest(false);
+    }
+  };
+
+  // Container-isolated scroll helper (does not touch window or document)
+  const scrollToBottom = (smooth = false) => {
+    const el = chatScrollContainerRef.current;
+    if (!el) return;
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+    isNearBottomRef.current = true;
+    setShowScrollToLatest(false);
+  };
 
   // Detect whether current session is in Authenticated Business AI mode vs Visitor mode
   const isAuthenticated = location.pathname.startsWith('/dashboard') || currentUser !== null;
@@ -154,18 +218,14 @@ export function FloatingAIAssistant() {
     }
   }, [location.pathname, selectedLang, business.name, currentUser]);
 
-  // Update language switcher handler
+  // Update language switcher handler (never auto-speaks greeting)
   const handleLanguageChange = (newLang: SupportedLanguage) => {
-    stopSpeaking();
-    setIsSpeaking(false);
+    stopAllSpeech();
     setSelectedLang(newLang);
 
     if (messages.length === 1 && messages[0].sender === 'assistant') {
       const newGreeting = createGreeting(newLang, isAuthenticated);
       setMessages([newGreeting]);
-      if (isVoiceOutputEnabled && isOpen) {
-        triggerVoiceResponse(newGreeting.text, newLang);
-      }
     } else {
       const noticeText = newLang === 'ta'
         ? `🔄 மொழி **தமிழ்** ஆக மாற்றப்பட்டது. உங்கள் அடுத்த கேள்விகளுக்கு தமிழில் பதில்கள் வழங்கப்படும்.`
@@ -186,12 +246,31 @@ export function FloatingAIAssistant() {
     }
   };
 
-  // Auto-scroll chat internally
+  // Follow-latest auto-scroll strictly inside container ONLY if user is already near bottom.
+  // Instant scroll (no smooth animation) prevents visual jumping during token/step streaming.
   useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!isOpen || showTicketModal) return;
+    if (isNearBottomRef.current) {
+      const el = chatScrollContainerRef.current;
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
     }
-  }, [messages, isProcessing, isOpen, currentStep, showTicketModal]);
+  }, [messages, isProcessing, currentStep, isOpen, showTicketModal]);
+
+  // Reset scroll to bottom when panel opens
+  useEffect(() => {
+    if (isOpen && !showTicketModal) {
+      isNearBottomRef.current = true;
+      setShowScrollToLatest(false);
+      requestAnimationFrame(() => {
+        const el = chatScrollContainerRef.current;
+        if (el) {
+          el.scrollTop = el.scrollHeight;
+        }
+      });
+    }
+  }, [isOpen]);
 
   // Focus input when opened
   useEffect(() => {
@@ -211,8 +290,7 @@ export function FloatingAIAssistant() {
         } else {
           setIsOpen(false);
         }
-        stopSpeaking();
-        setIsSpeaking(false);
+        stopAllSpeech();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -222,7 +300,7 @@ export function FloatingAIAssistant() {
   // Clean up speech on unmount
   useEffect(() => {
     return () => {
-      stopSpeaking();
+      stopAllSpeech();
       if (speechRecognitionRef.current) {
         try {
           speechRecognitionRef.current.stop();
@@ -238,18 +316,11 @@ export function FloatingAIAssistant() {
     e.stopPropagation();
   };
 
-  // Text-to-Speech playback helper
-  const triggerVoiceResponse = (text: string, lang: SupportedLanguage) => {
-    if (!isVoiceOutputEnabled) return;
-    setIsSpeaking(true);
-    speakText(text, lang, () => {
-      setIsSpeaking(false);
-    });
-  };
-
   // Web Speech API: Voice Recognition (Speech-to-Text)
   const toggleVoiceInput = () => {
     setSpeechError(null);
+    // Interrupt any ongoing speech playback immediately before starting listening
+    stopAllSpeech();
 
     if (isListening) {
       if (speechRecognitionRef.current) {
@@ -351,8 +422,8 @@ export function FloatingAIAssistant() {
     if (!textToSend || isProcessing) return;
 
     setHasInteracted(true);
-    stopSpeaking();
-    setIsSpeaking(false);
+    // Interrupt any previous playback immediately upon sending new prompt
+    stopAllSpeech();
 
     const activeLang: SupportedLanguage = selectedLang;
 
@@ -367,6 +438,10 @@ export function FloatingAIAssistant() {
     setMessages(prev => [...prev, userMsg]);
     setInputQuery('');
     setIsProcessing(true);
+    // Follow newly submitted prompt inside container without moving the parent page
+    isNearBottomRef.current = true;
+    requestAnimationFrame(() => scrollToBottom(false));
+
     setCurrentStep(
       activeLang === 'ta'
         ? 'பதிலை பகுப்பாய்வு செய்கிறது...'
@@ -397,12 +472,50 @@ export function FloatingAIAssistant() {
         };
 
         setMessages(prev => [...prev, assistantMsg]);
-        triggerVoiceResponse(specialResponse.answer, specialResponse.language);
+        // Only read aloud if the opt-in voice reader is explicitly enabled
+        if (isVoiceReaderEnabled) {
+          speakAssistantMessage(assistantMsg.id, specialResponse.answer, specialResponse.language);
+        }
         return;
       }
 
-      // If user is unauthenticated and asks an arbitrary query not covered, do not leak private data
+      // If user is unauthenticated, check if query is casual chat first before showing visitor mode onboarding
       if (!isAuthenticated) {
+        const intentCheck = classifyConversationIntent(textToSend, [], activeLang);
+        if (intentCheck.intent === 'CASUAL_CHAT') {
+          const casualText = generateCasualReply(textToSend, activeLang, intentCheck.subType);
+          const casualMsg: FloatingChatMessage = {
+            id: 'ast_' + Date.now(),
+            sender: 'assistant',
+            language: activeLang,
+            text: casualText,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isAiGenerated: true,
+          };
+          setMessages(prev => [...prev, casualMsg]);
+          if (isVoiceReaderEnabled) {
+            speakAssistantMessage(casualMsg.id, casualText, activeLang);
+          }
+          return;
+        }
+
+        if (intentCheck.intent === 'GREETING_OR_INTRODUCTION') {
+          const introText = generateIntroductionReply(activeLang);
+          const introMsg: FloatingChatMessage = {
+            id: 'ast_' + Date.now(),
+            sender: 'assistant',
+            language: activeLang,
+            text: introText,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isAiGenerated: true,
+          };
+          setMessages(prev => [...prev, introMsg]);
+          if (isVoiceReaderEnabled) {
+            speakAssistantMessage(introMsg.id, introText, activeLang);
+          }
+          return;
+        }
+
         const generalReplyText = activeLang === 'ta'
           ? `வணக்கம்! FranchiseOps AI என்பது உங்கள் ஃபிரான்சைஸ் நெட்வொர்க்கை நிர்வகிப்பதற்கான ஒரு ஸ்மார்ட் தளம் ஆகும். உங்கள் வணிகத்திற்கான விரிவான பகுப்பாய்வை பெற, தயவுசெய்து கணக்கில் நுழையவும் அல்லது பதிவு செய்யவும்.`
           : activeLang === 'te'
@@ -425,7 +538,10 @@ export function FloatingAIAssistant() {
         };
 
         setMessages(prev => [...prev, visitorMsg]);
-        triggerVoiceResponse(generalReplyText, activeLang);
+        // Only read aloud if the opt-in voice reader is explicitly enabled
+        if (isVoiceReaderEnabled) {
+          speakAssistantMessage(visitorMsg.id, generalReplyText, activeLang);
+        }
         return;
       }
 
@@ -442,13 +558,16 @@ export function FloatingAIAssistant() {
       );
 
       let finalText = result.answer;
+      const isCasualOrIntro = result.intent === 'CASUAL_CHAT' || result.intent === 'GREETING_OR_INTRODUCTION' || result.intent === 'SUPPORT_REQUEST';
 
-      if (activeLang === 'ta' && !/[\u0B80-\u0BFF]/.test(finalText)) {
-        finalText = `### 📊 பகுப்பாய்வு முடிவு\n\n${result.answer}\n\n**பரிந்துரைகள்:**\n${result.recommendations?.map(r => `• ${r}`).join('\n') || 'வளர்ச்சியை அதிகரிக்க பரிந்துரைக்கப்பட்ட உத்திகளை செயல்படுத்தவும்.'}`;
-      } else if (activeLang === 'te' && !/[\u0C00-\u0C7F]/.test(finalText)) {
-        finalText = `### 📊 విశ్లేషణ ఫలితం\n\n${result.answer}\n\n**సిఫార్సులు:**\n${result.recommendations?.map(r => `• ${r}`).join('\n') || 'లక్ష్యాలను సాధించడానికి కార్యాచరణ ప్రణాళికను అమలు చేయండి.'}`;
-      } else if (activeLang === 'hi' && !/[\u0900-\u097F]/.test(finalText)) {
-        finalText = `### 📊 विश्लेषण परिणाम\n\n${result.answer}\n\n**अनुशंसाएं:**\n${result.recommendations?.map(r => `• ${r}`).join('\n') || 'दिए गए सुझावों के अनुसार सुधारात्मक कदम उठाएं।'}`;
+      if (!isCasualOrIntro && result.intent === 'BUSINESS_ANALYSIS') {
+        if (activeLang === 'ta' && !/[\u0B80-\u0BFF]/.test(finalText)) {
+          finalText = `### 📊 பகுப்பாய்வு முடிவு\n\n${result.answer}\n\n**பரிந்துரைகள்:**\n${result.recommendations?.map(r => `• ${r}`).join('\n') || 'வளர்ச்சியை அதிகரிக்க பரிந்துரைக்கப்பட்ட உத்திகளை செயல்படுத்தவும்.'}`;
+        } else if (activeLang === 'te' && !/[\u0C00-\u0C7F]/.test(finalText)) {
+          finalText = `### 📊 విశ్లేషణ ఫలితం\n\n${result.answer}\n\n**సిఫార్సులు:**\n${result.recommendations?.map(r => `• ${r}`).join('\n') || 'లక్ష్యాలను సాధించడానికి కార్యాచరణ ప్రణాళికను అమలు చేయండి.'}`;
+        } else if (activeLang === 'hi' && !/[\u0900-\u097F]/.test(finalText)) {
+          finalText = `### 📊 विश्लेषण परिणाम\n\n${result.answer}\n\n**अनुशंसाएं:**\n${result.recommendations?.map(r => `• ${r}`).join('\n') || 'दिए गए सुझावों के अनुसार सुधारात्मक कदम उठाएं।'}`;
+        }
       }
 
       const assistantMsg: FloatingChatMessage = {
@@ -457,15 +576,18 @@ export function FloatingAIAssistant() {
         language: activeLang,
         text: finalText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        keyMetrics: result.key_metrics,
-        relatedOutlets: result.related_outlets,
-        toolsCalled: result.tools_called,
-        suggestedAction: result.suggested_action,
+        keyMetrics: isCasualOrIntro ? undefined : (result.key_metrics?.length ? result.key_metrics : undefined),
+        relatedOutlets: isCasualOrIntro ? undefined : (result.related_outlets?.length ? result.related_outlets : undefined),
+        toolsCalled: isCasualOrIntro ? undefined : (result.tools_called?.length ? result.tools_called : undefined),
+        suggestedAction: isCasualOrIntro ? undefined : result.suggested_action,
         isAiGenerated: result.isAiGenerated,
       };
 
       setMessages(prev => [...prev, assistantMsg]);
-      triggerVoiceResponse(finalText, activeLang);
+      // Only read aloud if the opt-in voice reader is explicitly enabled
+      if (isVoiceReaderEnabled) {
+        speakAssistantMessage(assistantMsg.id, finalText, activeLang);
+      }
     } catch (err) {
       console.error('Error running AI assistant:', err);
       const errorMsgText = activeLang === 'ta'
@@ -493,8 +615,7 @@ export function FloatingAIAssistant() {
   };
 
   const handleResetChat = () => {
-    stopSpeaking();
-    setIsSpeaking(false);
+    stopAllSpeech();
     clearConversationHistory(business.id);
     setMessages([createGreeting(selectedLang, isAuthenticated)]);
   };
@@ -598,7 +719,9 @@ export function FloatingAIAssistant() {
       };
 
       setMessages(prev => [...prev, confirmationMsg]);
-      triggerVoiceResponse(spokenConfirmation, selectedLang);
+      if (isVoiceReaderEnabled) {
+        speakAssistantMessage(confirmationMsg.id, spokenConfirmation, selectedLang);
+      }
 
       setTicketSubject('');
       setTicketDescription('');
@@ -649,28 +772,49 @@ export function FloatingAIAssistant() {
             </div>
 
             {/* Header Action Icons */}
-            <div className="flex items-center gap-1">
-              {/* Voice Output Toggle */}
+            <div className="flex items-center gap-1.5">
+              {/* If actively speaking, show a dedicated Stop button */}
+              {isSpeaking && (
+                <button
+                  onClick={stopAllSpeech}
+                  title="Stop speaking immediately"
+                  className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 flex items-center gap-1 text-[10px] font-semibold transition-colors animate-pulse"
+                >
+                  <Square className="w-2.5 h-2.5 fill-rose-300 text-rose-300" />
+                  <span>Stop</span>
+                </button>
+              )}
+
+              {/* Voice Reader Toggle */}
               <button
                 onClick={() => {
                   if (isSpeaking) {
-                    stopSpeaking();
-                    setIsSpeaking(false);
+                    stopAllSpeech();
                   }
-                  setIsVoiceOutputEnabled(!isVoiceOutputEnabled);
+                  setIsVoiceReaderEnabled(prev => !prev);
                 }}
-                title={isVoiceOutputEnabled ? 'Voice Responses Enabled (Click to Mute)' : 'Voice Responses Muted (Click to Unmute)'}
+                title={
+                  isSpeaking
+                    ? 'Speaking... (Click to stop)'
+                    : isVoiceReaderEnabled
+                    ? 'Voice Reader: ON (Auto-reads new responses) - Click to turn OFF'
+                    : 'Voice Reader: OFF (Silent mode) - Click to turn ON'
+                }
                 className={cn(
-                  'p-1.5 rounded-lg transition-colors',
-                  isVoiceOutputEnabled ? 'text-indigo-300 hover:bg-indigo-950/60' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'
+                  'p-1.5 rounded-lg transition-colors flex items-center gap-1',
+                  isSpeaking
+                    ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-500/30'
+                    : isVoiceReaderEnabled
+                    ? 'text-indigo-300 hover:bg-indigo-950/60 bg-indigo-950/40'
+                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'
                 )}
               >
                 {isSpeaking ? (
                   <Radio className="w-4 h-4 text-emerald-400 animate-spin" />
-                ) : isVoiceOutputEnabled ? (
-                  <Volume2 className="w-4 h-4" />
+                ) : isVoiceReaderEnabled ? (
+                  <Volume2 className="w-4 h-4 text-indigo-400" />
                 ) : (
-                  <VolumeX className="w-4 h-4" />
+                  <VolumeX className="w-4 h-4 text-slate-500" />
                 )}
               </button>
 
@@ -687,6 +831,7 @@ export function FloatingAIAssistant() {
               {isAuthenticated && (
                 <button
                   onClick={() => {
+                    stopAllSpeech();
                     setIsOpen(false);
                     navigate('/dashboard/copilot');
                   }}
@@ -700,8 +845,7 @@ export function FloatingAIAssistant() {
               {/* Close Panel */}
               <button
                 onClick={() => {
-                  stopSpeaking();
-                  setIsSpeaking(false);
+                  stopAllSpeech();
                   setIsOpen(false);
                 }}
                 title="Close AI Assistant"
@@ -923,7 +1067,8 @@ export function FloatingAIAssistant() {
             /* =================================================================== */
             <div 
               ref={chatScrollContainerRef}
-              className="flex-1 overflow-y-auto p-4 space-y-4 text-sm overscroll-contain scrollbar-thin scrollbar-thumb-slate-700"
+              onScroll={handleChatScroll}
+              className="flex-1 overflow-y-auto p-4 space-y-4 text-sm overscroll-contain scrollbar-thin scrollbar-thumb-slate-700 relative"
             >
               {messages.map((msg) => (
                 <div
@@ -1067,9 +1212,11 @@ export function FloatingAIAssistant() {
                     {msg.sender === 'assistant' && (
                       <>
                         <button
+                          type="button"
                           onClick={() => handleCopy(msg.id, msg.text)}
                           className="hover:text-slate-300 transition-colors flex items-center gap-0.5"
                           title="Copy text"
+                          aria-label="Copy text"
                         >
                           {copiedId === msg.id ? (
                             <Check className="w-3 h-3 text-emerald-400" />
@@ -1079,11 +1226,42 @@ export function FloatingAIAssistant() {
                         </button>
 
                         <button
-                          onClick={() => triggerVoiceResponse(msg.text, msg.language || selectedLang)}
-                          className="hover:text-indigo-300 transition-colors flex items-center gap-0.5"
-                          title="Read response aloud in current language"
+                          type="button"
+                          onClick={() => {
+                            if (isSpeaking && speakingMessageId === msg.id) {
+                              stopAllSpeech();
+                            } else {
+                              speakAssistantMessage(msg.id, msg.text, msg.language || selectedLang);
+                            }
+                          }}
+                          className={cn(
+                            "transition-colors flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]",
+                            isSpeaking && speakingMessageId === msg.id
+                              ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30"
+                              : "hover:text-indigo-300 text-slate-400"
+                          )}
+                          title={
+                            isSpeaking && speakingMessageId === msg.id
+                              ? "Stop reading aloud"
+                              : "Read response aloud in current language"
+                          }
+                          aria-label={
+                            isSpeaking && speakingMessageId === msg.id
+                              ? "Stop reading aloud"
+                              : "Read response aloud in current language"
+                          }
                         >
-                          <Volume2 className="w-3 h-3" />
+                          {isSpeaking && speakingMessageId === msg.id ? (
+                            <>
+                              <Square className="w-2.5 h-2.5 fill-current text-rose-400" />
+                              <span className="text-[10px] text-rose-300 font-medium">Stop</span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="w-3 h-3" />
+                              <span className="text-[10px]">Read aloud</span>
+                            </>
+                          )}
                         </button>
                       </>
                     )}
@@ -1101,7 +1279,30 @@ export function FloatingAIAssistant() {
                 </div>
               )}
 
-              <div ref={messagesEndRef} />
+              {/* Scroll to latest button */}
+              {showScrollToLatest && (
+                <div className="sticky bottom-2 left-0 right-0 flex justify-center z-20 pointer-events-none">
+                  <button
+                    type="button"
+                    onClick={() => scrollToBottom(true)}
+                    className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/95 hover:bg-indigo-500 text-white text-xs font-semibold rounded-full shadow-lg border border-indigo-400/40 backdrop-blur-md transition-all hover:scale-105 active:scale-95"
+                    aria-label="Scroll to latest messages"
+                  >
+                    <ArrowDown className="w-3.5 h-3.5 animate-bounce" />
+                    <span>
+                      {selectedLang === 'ta'
+                        ? 'புதிய செய்திக்குச் செல்லவும்'
+                        : selectedLang === 'te'
+                        ? 'తాజా సందేశాలకు వెళ్లండి'
+                        : selectedLang === 'hi'
+                        ? 'नवीनतम संदेश देखें'
+                        : 'Scroll to latest'}
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {/* End of messages anchor */}
             </div>
           )}
 

@@ -170,3 +170,6 @@ export interface RevenueTrendAnalysis {
 
 export * from './tenant';
 export * from './inventory';
+export * from './workforce';
+export * from './marketing';
+

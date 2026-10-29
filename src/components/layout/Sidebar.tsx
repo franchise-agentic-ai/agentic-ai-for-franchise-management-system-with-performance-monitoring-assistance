@@ -23,7 +23,8 @@ import {
   Truck,
   Compass,
   Layers,
-  AlertTriangle
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
 import { FranchiseOpsLogo } from '../brand/FranchiseOpsLogo';
 import { cn } from '../../lib/utils';
@@ -52,6 +53,7 @@ export function Sidebar() {
     'Inventory': true,
     'Staff': false,
     'Marketing': false,
+    'Audits': false,
     'Finance': true,
     'Risk Center': true,
   });
@@ -88,6 +90,7 @@ export function Sidebar() {
     if (current.includes('/inventory')) setExpandedItems(p => ({ ...p, 'Inventory': true }));
     if (current.includes('/staff')) setExpandedItems(p => ({ ...p, 'Staff': true }));
     if (current.includes('/marketing')) setExpandedItems(p => ({ ...p, 'Marketing': true }));
+    if (current.includes('/audits') || current.includes('/audit')) setExpandedItems(p => ({ ...p, 'Audits': true }));
     if (current.includes('/finance')) setExpandedItems(p => ({ ...p, 'Finance': true }));
     if (current.includes('/risk-center') || current.includes('/risk')) setExpandedItems(p => ({ ...p, 'Risk Center': true }));
   }, [location.pathname]);
@@ -140,6 +143,20 @@ export function Sidebar() {
         { name: 'Campaigns', path: '/dashboard/marketing?tab=campaigns' },
         { name: 'Campaign Performance', path: '/dashboard/marketing?tab=performance' },
         { name: 'Marketing ROI', path: '/dashboard/marketing?tab=roi' },
+      ]
+    },
+    {
+      name: 'Audits',
+      path: '/dashboard/audits',
+      icon: ShieldCheck,
+      badge: 'Audit',
+      badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+      children: [
+        { name: 'Audit Overview', path: '/dashboard/audits?tab=overview' },
+        { name: 'Audit Records', path: '/dashboard/audits?tab=records' },
+        { name: 'Compliance', path: '/dashboard/audits?tab=compliance' },
+        { name: 'Corrective Actions', path: '/dashboard/audits?tab=actions' },
+        { name: 'AI Audit Insights', path: '/dashboard/audits?tab=ai-insights' },
       ]
     },
     {

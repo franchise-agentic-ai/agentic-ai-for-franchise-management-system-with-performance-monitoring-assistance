@@ -11,6 +11,7 @@ import { OutletDetail } from './pages/OutletDetail';
 import { InventoryPage } from './pages/InventoryPage';
 import { StaffPage } from './pages/StaffPage';
 import { MarketingPage } from './pages/MarketingPage';
+import { AuditPage } from './pages/AuditPage';
 import { FinancePage } from './pages/FinancePage';
 import { RiskCenterPage } from './pages/RiskCenterPage';
 import { AICopilotPage } from './pages/AICopilotPage';
@@ -27,11 +28,14 @@ import { PricingPage } from './pages/PricingPage';
 import { BookDemo } from './pages/BookDemo';
 import { Login } from './pages/Login';
 import { Onboarding } from './pages/Onboarding';
+import { SolutionDetailPage } from './pages/SolutionDetailPage';
+import { ScrollToTop } from './components/common/ScrollToTop';
 import { FloatingAIAssistant } from './components/ai/FloatingAIAssistant';
 
 export default function App() {
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/pricing" element={<PricingPage />} />
@@ -39,6 +43,15 @@ export default function App() {
         <Route path="/book-demo" element={<BookDemo />} />
         <Route path="/login" element={<Login />} />
         <Route path="/onboarding" element={<Onboarding />} />
+
+        {/* Dedicated Solution Experience Routes */}
+        <Route path="/solutions" element={<Navigate to="/solutions/franchise-growth" replace />} />
+        <Route path="/solutions/franchise-growth" element={<SolutionDetailPage slug="franchise-growth" />} />
+        <Route path="/solutions/sop-playbook" element={<SolutionDetailPage slug="sop-playbook" />} />
+        <Route path="/solutions/operations-intelligence" element={<SolutionDetailPage slug="operations-intelligence" />} />
+        <Route path="/solutions/compliance-audit" element={<SolutionDetailPage slug="compliance-audit" />} />
+        <Route path="/solutions/team-onboarding" element={<SolutionDetailPage slug="team-onboarding" />} />
+        <Route path="/solutions/:slug" element={<SolutionDetailPage />} />
         
         {/* Main Dashboard Shell */}
         <Route path="/dashboard" element={<AppLayout />}>
@@ -59,7 +72,11 @@ export default function App() {
           {/* 4. Marketing */}
           <Route path="marketing" element={<MarketingPage />} />
 
-          {/* 5. Finance */}
+          {/* 5. Audits & Compliance */}
+          <Route path="audits" element={<AuditPage />} />
+          <Route path="audit" element={<AuditPage />} />
+
+          {/* 6. Finance */}
           <Route path="finance" element={<FinancePage />} />
 
           {/* 6. Risk Center */}

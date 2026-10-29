@@ -26,9 +26,17 @@ import {
   StockTransferStatus,
   PurchaseOrderStatus,
   VarianceReason,
-  WastageReason
+  WastageReason,
+  Employee,
+  ShiftRecord,
+  StaffingRequirement,
+  StaffAgentInsight,
+  MarketingCampaign,
+  MarketingAgentInsight
 } from '../types';
 import { mockOutlets, mockPerformances } from './mockData';
+import { INITIAL_EMPLOYEES, INITIAL_SHIFTS, INITIAL_STAFFING_REQUIREMENTS } from './workforceData';
+import { INITIAL_MARKETING_CAMPAIGNS } from './marketingData';
 
 export interface UserAccount {
   id: string;
@@ -60,7 +68,13 @@ const STOCK_COUNTS_KEY_PREFIX = 'franchiseops_stock_counts_';
 const WASTAGE_KEY_PREFIX = 'franchiseops_wastage_';
 const AUDIT_LOG_KEY_PREFIX = 'franchiseops_inv_audit_logs_';
 const STAFF_KEY_PREFIX = 'franchiseops_staff_';
+const EMPLOYEES_KEY_PREFIX = 'franchiseops_employees_v3_';
+const SHIFTS_KEY_PREFIX = 'franchiseops_shifts_v3_';
+const STAFFING_REQ_KEY_PREFIX = 'franchiseops_staffing_req_v3_';
+const WORKFORCE_INSIGHTS_KEY_PREFIX = 'franchiseops_wf_insights_';
 const MARKETING_KEY_PREFIX = 'franchiseops_marketing_';
+const CAMPAIGNS_KEY_PREFIX = 'franchiseops_campaigns_adv_v3_';
+const MARKETING_INSIGHTS_KEY_PREFIX = 'franchiseops_mkt_insights_';
 const AUDITS_KEY_PREFIX = 'franchiseops_audits_';
 const MEMBERS_KEY_PREFIX = 'franchiseops_members_';
 const ACTIVITY_KEY_PREFIX = 'franchiseops_activity_';
@@ -2468,7 +2482,176 @@ export function addTenantMarketing(businessId: string, record: Omit<MarketingRec
 }
 
 // -------------------------------------------------------------
+// WORKFORCE & STAFF INTELLIGENCE (Scoped to Business)
+// -------------------------------------------------------------
+
+export function getTenantEmployees(businessId: string): Employee[] {
+  try {
+    const raw = localStorage.getItem(EMPLOYEES_KEY_PREFIX + businessId);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length >= 15) return parsed;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  const outlets = getTenantOutlets(businessId);
+  const seeded = INITIAL_EMPLOYEES.map(emp => {
+    const matchedOutlet = outlets.find(o => o.id === emp.outletId || o.name.toLowerCase().includes(emp.outletName.toLowerCase().replace('biryani hub - ', '')));
+    return {
+      ...emp,
+      businessId,
+      outletId: matchedOutlet ? matchedOutlet.id : emp.outletId,
+      outletName: matchedOutlet ? matchedOutlet.name : emp.outletName
+    };
+  });
+  localStorage.setItem(EMPLOYEES_KEY_PREFIX + businessId, JSON.stringify(seeded));
+  return seeded;
+}
+
+export function saveTenantEmployees(businessId: string, employees: Employee[]) {
+  localStorage.setItem(EMPLOYEES_KEY_PREFIX + businessId, JSON.stringify(employees));
+  window.dispatchEvent(new CustomEvent('franchiseops_data_updated', { detail: { type: 'employees', businessId } }));
+}
+
+export function addTenantEmployee(businessId: string, employee: Omit<Employee, 'employeeId' | 'businessId'>): Employee {
+  const current = getTenantEmployees(businessId);
+  const newEmp: Employee = {
+    ...employee,
+    employeeId: `emp_${Date.now()}`,
+    businessId
+  };
+  saveTenantEmployees(businessId, [newEmp, ...current]);
+  logTenantActivity(businessId, 'Staff Agent', `Added team member: ${newEmp.employeeName} (${newEmp.role}) at ${newEmp.outletName}`);
+  return newEmp;
+}
+
+export function getTenantShifts(businessId: string): ShiftRecord[] {
+  try {
+    const raw = localStorage.getItem(SHIFTS_KEY_PREFIX + businessId);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length >= 8) return parsed;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  const outlets = getTenantOutlets(businessId);
+  const seeded = INITIAL_SHIFTS.map(s => {
+    const matchedOutlet = outlets.find(o => o.id === s.outletId || o.name.toLowerCase().includes(s.outletName.toLowerCase().replace('biryani hub - ', '')));
+    return {
+      ...s,
+      businessId,
+      outletId: matchedOutlet ? matchedOutlet.id : s.outletId,
+      outletName: matchedOutlet ? matchedOutlet.name : s.outletName
+    };
+  });
+  localStorage.setItem(SHIFTS_KEY_PREFIX + businessId, JSON.stringify(seeded));
+  return seeded;
+}
+
+export function saveTenantShifts(businessId: string, shifts: ShiftRecord[]) {
+  localStorage.setItem(SHIFTS_KEY_PREFIX + businessId, JSON.stringify(shifts));
+  window.dispatchEvent(new CustomEvent('franchiseops_data_updated', { detail: { type: 'shifts', businessId } }));
+}
+
+export function getTenantStaffingRequirements(businessId: string): StaffingRequirement[] {
+  try {
+    const raw = localStorage.getItem(STAFFING_REQ_KEY_PREFIX + businessId);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  localStorage.setItem(STAFFING_REQ_KEY_PREFIX + businessId, JSON.stringify(INITIAL_STAFFING_REQUIREMENTS));
+  return INITIAL_STAFFING_REQUIREMENTS;
+}
+
+export function getTenantWorkforceInsights(businessId: string): StaffAgentInsight[] {
+  try {
+    const raw = localStorage.getItem(WORKFORCE_INSIGHTS_KEY_PREFIX + businessId);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error(e);
+  }
+  return [];
+}
+
+export function saveTenantWorkforceInsights(businessId: string, insights: StaffAgentInsight[]) {
+  localStorage.setItem(WORKFORCE_INSIGHTS_KEY_PREFIX + businessId, JSON.stringify(insights));
+  window.dispatchEvent(new CustomEvent('franchiseops_wf_insights_updated', { detail: { businessId } }));
+}
+
+// -------------------------------------------------------------
+// ADVANCED MARKETING INTELLIGENCE (Scoped to Business)
+// -------------------------------------------------------------
+
+export function getTenantCampaigns(businessId: string): MarketingCampaign[] {
+  try {
+    const raw = localStorage.getItem(CAMPAIGNS_KEY_PREFIX + businessId);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  const outlets = getTenantOutlets(businessId);
+  const seeded = INITIAL_MARKETING_CAMPAIGNS.map(c => {
+    const matchedOutlet = outlets.find(o => o.id === c.outletId) || (outlets.length > 0 ? outlets[0] : null);
+    return {
+      ...c,
+      businessId,
+      outletId: matchedOutlet ? matchedOutlet.id : c.outletId,
+      outletName: matchedOutlet ? matchedOutlet.name : c.outletName
+    };
+  });
+
+  localStorage.setItem(CAMPAIGNS_KEY_PREFIX + businessId, JSON.stringify(seeded));
+  return seeded;
+}
+
+export function saveTenantCampaigns(businessId: string, campaigns: MarketingCampaign[]) {
+  localStorage.setItem(CAMPAIGNS_KEY_PREFIX + businessId, JSON.stringify(campaigns));
+  window.dispatchEvent(new CustomEvent('franchiseops_data_updated', { detail: { type: 'campaigns', businessId } }));
+}
+
+export function addTenantCampaign(businessId: string, campaign: Omit<MarketingCampaign, 'campaignId' | 'businessId'>): MarketingCampaign {
+  const current = getTenantCampaigns(businessId);
+  const newCampaign: MarketingCampaign = {
+    ...campaign,
+    campaignId: `mkt_${Date.now()}`,
+    businessId
+  };
+  saveTenantCampaigns(businessId, [newCampaign, ...current]);
+  logTenantActivity(businessId, 'Marketing Agent', `Deployed campaign '${newCampaign.campaignName}' for ${newCampaign.outletName} (${newCampaign.channel})`);
+  return newCampaign;
+}
+
+export function getTenantMarketingInsights(businessId: string): MarketingAgentInsight[] {
+  try {
+    const raw = localStorage.getItem(MARKETING_INSIGHTS_KEY_PREFIX + businessId);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error(e);
+  }
+  return [];
+}
+
+export function saveTenantMarketingInsights(businessId: string, insights: MarketingAgentInsight[]) {
+  localStorage.setItem(MARKETING_INSIGHTS_KEY_PREFIX + businessId, JSON.stringify(insights));
+  window.dispatchEvent(new CustomEvent('franchiseops_mkt_insights_updated', { detail: { businessId } }));
+}
+
+// -------------------------------------------------------------
 // AUDIT RECORDS (Scoped to Business)
+
 // -------------------------------------------------------------
 
 export function getTenantAudits(businessId: string): AuditRecord[] {

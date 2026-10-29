@@ -126,10 +126,12 @@ export function IntelligenceWorkspace() {
   };
 
   const sampleQueries = [
-    'Which outlet is performing worst and why?',
-    'Are there any inventory stockouts?',
-    'What should I prioritize this week?',
-    'How is my marketing campaign performing?',
+    'Which outlet has the worst staff attendance?',
+    'Which campaign has the highest ROI?',
+    'Where do we have staff shortages?',
+    'Which marketing campaign is wasting money?',
+    'Is our current workforce sufficient for the campaign?',
+    'Which employees have the highest productivity?'
   ];
 
   return (

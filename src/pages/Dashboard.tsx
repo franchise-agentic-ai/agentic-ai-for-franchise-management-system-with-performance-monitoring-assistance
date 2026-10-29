@@ -597,8 +597,8 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* 6. ROW 4: INVENTORY, STAFF, MARKETING, FINANCE SUMMARY PILLARS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 6. ROW 4: INVENTORY, STAFF, MARKETING, AUDITS, FINANCE SUMMARY PILLARS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Pillar 1: Inventory */}
         <Link to="/dashboard/inventory" className="block group">
           <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs group-hover:border-indigo-400 group-hover:shadow-sm transition-all">
@@ -615,7 +615,7 @@ export function Dashboard() {
               </span>
             </div>
             <div className="text-xs text-slate-500 flex justify-between pt-1 border-t border-slate-100">
-              <span>Low Stock Alerts:</span>
+              <span>Low Stock:</span>
               <strong className={cn("font-mono", lowStockItems.length > 0 ? "text-rose-600" : "text-slate-700")}>
                 {lowStockItems.length} Items
               </strong>
@@ -639,9 +639,9 @@ export function Dashboard() {
               </span>
             </div>
             <div className="text-xs text-slate-500 flex justify-between pt-1 border-t border-slate-100">
-              <span>Shift Shortages:</span>
+              <span>Shortages:</span>
               <strong className="text-slate-700 font-mono">
-                {business.id === DEFAULT_BUSINESS.id ? '3 Risks' : '0 Risks'}
+                {business.id === DEFAULT_BUSINESS.id ? '3 Shifts' : '0 Risks'}
               </strong>
             </div>
           </div>
@@ -660,15 +660,36 @@ export function Dashboard() {
               </span>
             </div>
             <div className="text-xs text-slate-500 flex justify-between pt-1 border-t border-slate-100">
-              <span>Active Campaigns:</span>
+              <span>Campaigns:</span>
               <strong className="text-slate-800 font-mono">
-                {business.id === DEFAULT_BUSINESS.id ? '8 Live' : '0 Active'}
+                {business.id === DEFAULT_BUSINESS.id ? '8 Active' : '0 Active'}
               </strong>
             </div>
           </div>
         </Link>
 
-        {/* Pillar 4: Finance */}
+        {/* Pillar 4: Audits */}
+        <Link to="/dashboard/audits" className="block group">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs group-hover:border-indigo-400 group-hover:shadow-sm transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-indigo-600" />
+                🛡️ Audits
+              </span>
+              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                Compliance
+              </span>
+            </div>
+            <div className="text-xs text-slate-500 flex justify-between pt-1 border-t border-slate-100">
+              <span>Open Actions:</span>
+              <strong className="text-slate-800 font-mono">
+                2 Issues
+              </strong>
+            </div>
+          </div>
+        </Link>
+
+        {/* Pillar 5: Finance */}
         <Link to="/dashboard/finance" className="block group">
           <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs group-hover:border-indigo-400 group-hover:shadow-sm transition-all">
             <div className="flex items-center justify-between mb-2">
@@ -681,7 +702,7 @@ export function Dashboard() {
               </span>
             </div>
             <div className="text-xs text-slate-500 flex justify-between pt-1 border-t border-slate-100">
-              <span>EBITDA Estimation:</span>
+              <span>EBITDA:</span>
               <strong className="text-emerald-600 font-mono">
                 {totalProfit > 0 ? formatCurrency(totalProfit) : '₹0'}
               </strong>

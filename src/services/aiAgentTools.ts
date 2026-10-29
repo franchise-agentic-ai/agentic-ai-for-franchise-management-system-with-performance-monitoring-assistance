@@ -25,7 +25,18 @@ import {
   WastageRecord,
   WastageSummary,
   ControlTowerSummary,
-  InventoryAuditLogEntry
+  InventoryAuditLogEntry,
+  Employee,
+  ShiftRecord,
+  StaffingRequirement,
+  StaffShortageAssessment,
+  WorkforceOutletMetrics,
+  WorkforceKPIs,
+  MarketingCampaign,
+  CampaignCalculatedMetrics,
+  ChannelPerformanceSummary,
+  OutletMarketingSummary,
+  CrossAgentCampaignStaffImpact
 } from '../types';
 import { 
   getActiveBusiness, 
@@ -41,7 +52,11 @@ import {
   getTenantWastage,
   getTenantInventoryAuditLogs,
   getTenantStaff, 
+  getTenantEmployees,
+  getTenantShifts,
+  getTenantStaffingRequirements,
   getTenantMarketing, 
+  getTenantCampaigns,
   getTenantAudits, 
   calculateOverallBusinessHealthScore,
   calculateBusinessSetupProgress
@@ -59,6 +74,31 @@ import {
   calculateWastageSummary,
   calculateControlTowerSummary
 } from './inventoryEngine';
+import { 
+  calculateAttendanceRate as calcAttendance,
+  calculateProductivityScore as calcProductivity,
+  calculatePerformanceScore as calcPerformance,
+  analyzeWorkingHoursAndOvertime,
+  detectStaffShortages as detectShortages,
+  analyzeShiftCoverage as analyzeCoverage,
+  compareOutletWorkforce as compareWorkforce,
+  calculateWorkforceScore as calcWorkforceScore,
+  identifyHighAndLowPerformers
+} from './staffEngine';
+import { 
+  calculateCampaignROI as calcROI,
+  calculateConversionRate as calcConvRate,
+  calculateCustomerAcquisitionCost as calcCAC,
+  calculateCostPerClick as calcCPC,
+  calculateClickThroughRate as calcCTR,
+  calculateBudgetUtilization as calcBudgetUtil,
+  rankCampaigns as rankAllCampaigns,
+  compareMarketingChannels as compareChannels,
+  compareOutletMarketing as compareOutletsMarketing,
+  detectUnderperformingCampaigns as detectBadCampaigns,
+  correlateCampaignsWithWorkforce
+} from './marketingEngine';
+
 
 /**
  * Reusable AI Tools / Function Calling Layer for FranchiseOps AI.
@@ -377,11 +417,180 @@ export function get_inventory_risks(businessId: string): {
 }
 
 
-export function get_staff_performance(businessId: string, outletId?: string): StaffRecord[] {
-  const staff = getTenantStaff(businessId);
-  if (!outletId) return staff;
-  return staff.filter(s => s.outlet_id === outletId);
+// -------------------------------------------------------------
+// STAFF & WORKFORCE INTELLIGENCE TOOLS
+// -------------------------------------------------------------
+
+export function getEmployees(businessId: string, filter?: { outletId?: string; department?: string; status?: string }): Employee[] {
+  let employees = getTenantEmployees(businessId);
+  if (!filter) return employees;
+  if (filter.outletId) employees = employees.filter(e => e.outletId === filter.outletId);
+  if (filter.department) employees = employees.filter(e => e.department.toLowerCase() === filter.department?.toLowerCase());
+  if (filter.status) employees = employees.filter(e => e.status.toLowerCase() === filter.status?.toLowerCase());
+  return employees;
 }
+export const get_employees = getEmployees;
+
+export function getAttendance(businessId: string, filter?: { outletId?: string }): {
+  overallAttendanceRate: number;
+  outletAttendance: { outletId: string; outletName: string; attendanceRate: number; employeeCount: number }[];
+  absenteeismHotspots: Employee[];
+} {
+  const employees = getTenantEmployees(businessId);
+  const outlets = getTenantOutlets(businessId);
+  const filtered = filter?.outletId ? employees.filter(e => e.outletId === filter.outletId) : employees;
+
+  const overall = calcAttendance(filtered);
+  const outletAttendance = outlets.map(o => {
+    const oEmps = employees.filter(e => e.outletId === o.id);
+    return {
+      outletId: o.id,
+      outletName: o.name,
+      attendanceRate: calcAttendance(oEmps),
+      employeeCount: oEmps.length
+    };
+  });
+
+  const hotspots = employees.filter(e => e.attendanceRate < 80 || e.status === 'On Leave');
+
+  return {
+    overallAttendanceRate: overall,
+    outletAttendance,
+    absenteeismHotspots: hotspots
+  };
+}
+export const get_attendance = getAttendance;
+
+export function getShiftCoverage(businessId: string, filter?: { outletId?: string }): {
+  totalShifts: number;
+  coveredShifts: number;
+  shortageShifts: number;
+  overallCoveragePercentage: number;
+  shifts: ShiftRecord[];
+} {
+  let shifts = getTenantShifts(businessId);
+  if (filter?.outletId) shifts = shifts.filter(s => s.outletId === filter.outletId);
+  const coverage = analyzeCoverage(shifts);
+  return {
+    ...coverage,
+    shifts
+  };
+}
+export const get_shift_coverage = getShiftCoverage;
+
+export function getStaffPerformance(businessId: string, filter?: { outletId?: string }): {
+  overallPerformanceScore: number;
+  topPerformers: Employee[];
+  attentionRequired: Employee[];
+  employees: Employee[];
+} {
+  let employees = getTenantEmployees(businessId);
+  if (filter?.outletId) employees = employees.filter(e => e.outletId === filter.outletId);
+  const overall = calcPerformance(employees);
+  const { topPerformers, attentionRequired } = identifyHighAndLowPerformers(employees);
+
+  return {
+    overallPerformanceScore: overall,
+    topPerformers,
+    attentionRequired,
+    employees
+  };
+}
+export const get_staff_performance = (businessId: string, outletId?: string) => {
+  return getTenantStaff(businessId).filter(s => !outletId || s.outlet_id === outletId);
+};
+
+export function getStaffProductivity(businessId: string, filter?: { outletId?: string }): {
+  overallProductivityScore: number;
+  overtimeAnalysis: {
+    totalWorkingHours: number;
+    totalOvertimeHours: number;
+    averageOvertime: number;
+    excessiveOvertimeStaff: Employee[];
+  };
+  productivityByOutlet: { outletId: string; outletName: string; productivityScore: number }[];
+} {
+  let employees = getTenantEmployees(businessId);
+  const outlets = getTenantOutlets(businessId);
+  if (filter?.outletId) employees = employees.filter(e => e.outletId === filter.outletId);
+
+  const overall = calcProductivity(employees);
+  const overtime = analyzeWorkingHoursAndOvertime(employees);
+  const productivityByOutlet = outlets.map(o => {
+    const oEmps = employees.filter(e => e.outletId === o.id);
+    return {
+      outletId: o.id,
+      outletName: o.name,
+      productivityScore: calcProductivity(oEmps)
+    };
+  });
+
+  return {
+    overallProductivityScore: overall,
+    overtimeAnalysis: overtime,
+    productivityByOutlet
+  };
+}
+export const get_staff_productivity = getStaffProductivity;
+
+export function detectStaffShortages(businessId: string, filter?: { outletId?: string }): StaffShortageAssessment[] {
+  let shifts = getTenantShifts(businessId);
+  let employees = getTenantEmployees(businessId);
+  const requirements = getTenantStaffingRequirements(businessId);
+  if (filter?.outletId) {
+    shifts = shifts.filter(s => s.outletId === filter.outletId);
+  }
+  return detectShortages(shifts, employees, requirements);
+}
+export const detect_staff_shortages = detectStaffShortages;
+
+export function compareOutletWorkforce(businessId: string): WorkforceOutletMetrics[] {
+  const outlets = getTenantOutlets(businessId);
+  const employees = getTenantEmployees(businessId);
+  const shifts = getTenantShifts(businessId);
+  return compareWorkforce(outlets, employees, shifts);
+}
+export const compare_outlet_workforce = compareOutletWorkforce;
+
+export function calculateWorkforceScore(businessId: string, outletId?: string): {
+  overallScore: number;
+  outletScores: { outletId: string; outletName: string; score: number; riskLevel: string; primaryReason: string }[];
+} {
+  const metrics = compareOutletWorkforce(businessId);
+  const filtered = outletId ? metrics.filter(m => m.outletId === outletId) : metrics;
+  const overallScore = metrics.length > 0 ? Math.round(metrics.reduce((s, m) => s + m.workforceHealthScore, 0) / metrics.length) : 0;
+
+  return {
+    overallScore,
+    outletScores: filtered.map(m => ({
+      outletId: m.outletId,
+      outletName: m.outletName,
+      score: m.workforceHealthScore,
+      riskLevel: m.riskLevel,
+      primaryReason: m.primaryRiskReason || ''
+    }))
+  };
+}
+export const calculate_workforce_score = calculateWorkforceScore;
+
+export function getOvertimeData(businessId: string, filter?: { outletId?: string }) {
+  let employees = getTenantEmployees(businessId);
+  if (filter?.outletId) employees = employees.filter(e => e.outletId === filter.outletId);
+  return analyzeWorkingHoursAndOvertime(employees);
+}
+export const get_overtime_data = getOvertimeData;
+
+export function detectAttendanceRisks(businessId: string, filter?: { outletId?: string }) {
+  const attendance = getAttendance(businessId, filter);
+  return attendance.absenteeismHotspots;
+}
+export const detect_attendance_risks = detectAttendanceRisks;
+
+export function detectOvertimeRisks(businessId: string, filter?: { outletId?: string }) {
+  const otData = getOvertimeData(businessId, filter);
+  return otData.excessiveOvertimeStaff;
+}
+export const detect_overtime_risks = detectOvertimeRisks;
 
 export function get_staffing_status(businessId: string): {
   avgAttendance: number;
@@ -401,6 +610,159 @@ export function get_staffing_status(businessId: string): {
   };
 }
 
+// -------------------------------------------------------------
+// MARKETING INTELLIGENCE TOOLS
+// -------------------------------------------------------------
+
+export function getCampaigns(businessId: string, filter?: { outletId?: string; channel?: string; status?: string }): MarketingCampaign[] {
+  let campaigns = getTenantCampaigns(businessId);
+  if (!filter) return campaigns;
+  if (filter.outletId) campaigns = campaigns.filter(c => c.outletId === filter.outletId);
+  if (filter.channel) campaigns = campaigns.filter(c => c.channel.toLowerCase() === filter.channel?.toLowerCase());
+  if (filter.status) campaigns = campaigns.filter(c => c.status.toLowerCase() === filter.status?.toLowerCase());
+  return campaigns;
+}
+export const get_campaigns = getCampaigns;
+
+export function getCampaignPerformance(businessId: string, filter?: { outletId?: string }): CampaignCalculatedMetrics[] {
+  let campaigns = getTenantCampaigns(businessId);
+  if (filter?.outletId) campaigns = campaigns.filter(c => c.outletId === filter.outletId);
+  return rankAllCampaigns(campaigns);
+}
+export const get_campaign_performance = getCampaignPerformance;
+
+export function calculateCampaignROI(businessId: string, campaignId?: string): {
+  campaigns: { campaignId: string; campaignName: string; spend: number; attributedRevenue: number; roi: number }[];
+  blendedROI: number;
+  totalSpend: number;
+  totalRevenue: number;
+} {
+  const campaigns = getTenantCampaigns(businessId);
+  const filtered = campaignId ? campaigns.filter(c => c.campaignId === campaignId) : campaigns;
+  const totalSpend = filtered.reduce((s, c) => s + c.spend, 0);
+  const totalRevenue = filtered.reduce((s, c) => s + c.attributedRevenue, 0);
+  const blendedROI = calcROI(totalSpend, totalRevenue);
+
+  return {
+    campaigns: filtered.map(c => ({
+      campaignId: c.campaignId,
+      campaignName: c.campaignName,
+      spend: c.spend,
+      attributedRevenue: c.attributedRevenue,
+      roi: calcROI(c.spend, c.attributedRevenue)
+    })),
+    blendedROI,
+    totalSpend,
+    totalRevenue
+  };
+}
+export const calculate_campaign_roi = calculateCampaignROI;
+
+export function calculateConversionRate(businessId: string, campaignId?: string): {
+  campaigns: { campaignId: string; campaignName: string; clicks: number; conversions: number; conversionRate: number }[];
+  blendedConversionRate: number;
+} {
+  const campaigns = getTenantCampaigns(businessId);
+  const filtered = campaignId ? campaigns.filter(c => c.campaignId === campaignId) : campaigns;
+  const totalClicks = filtered.reduce((s, c) => s + c.clicks, 0);
+  const totalConversions = filtered.reduce((s, c) => s + c.conversions, 0);
+  const blendedConversionRate = calcConvRate(totalConversions, totalClicks);
+
+  return {
+    campaigns: filtered.map(c => ({
+      campaignId: c.campaignId,
+      campaignName: c.campaignName,
+      clicks: c.clicks,
+      conversions: c.conversions,
+      conversionRate: calcConvRate(c.conversions, c.clicks)
+    })),
+    blendedConversionRate
+  };
+}
+export const calculate_conversion_rate = calculateConversionRate;
+
+export function calculateCustomerAcquisitionCost(businessId: string, campaignId?: string): {
+  campaigns: { campaignId: string; campaignName: string; spend: number; customersAcquired: number; cac: number }[];
+  averageCAC: number;
+} {
+  const campaigns = getTenantCampaigns(businessId);
+  const filtered = campaignId ? campaigns.filter(c => c.campaignId === campaignId) : campaigns;
+  const totalSpend = filtered.reduce((s, c) => s + c.spend, 0);
+  const totalCustomers = filtered.reduce((s, c) => s + c.customersAcquired, 0);
+  const averageCAC = calcCAC(totalSpend, totalCustomers);
+
+  return {
+    campaigns: filtered.map(c => ({
+      campaignId: c.campaignId,
+      campaignName: c.campaignName,
+      spend: c.spend,
+      customersAcquired: c.customersAcquired,
+      cac: calcCAC(c.spend, c.customersAcquired)
+    })),
+    averageCAC
+  };
+}
+export const calculate_customer_acquisition_cost = calculateCustomerAcquisitionCost;
+
+export function compareCampaigns(businessId: string): CampaignCalculatedMetrics[] {
+  const campaigns = getTenantCampaigns(businessId);
+  return rankAllCampaigns(campaigns);
+}
+export const compare_campaigns = compareCampaigns;
+
+export function compareMarketingChannels(businessId: string): ChannelPerformanceSummary[] {
+  const campaigns = getTenantCampaigns(businessId);
+  return compareChannels(campaigns);
+}
+export const compare_marketing_channels = compareMarketingChannels;
+
+export function detectUnderperformingCampaigns(businessId: string): CampaignCalculatedMetrics[] {
+  const campaigns = getTenantCampaigns(businessId);
+  return detectBadCampaigns(campaigns);
+}
+export const detect_underperforming_campaigns = detectUnderperformingCampaigns;
+
+export function calculateMarketingEffectiveness(businessId: string): {
+  kpis: {
+    totalMarketingSpend: number;
+    totalAttributedRevenue: number;
+    blendedROI: number;
+    blendedConversionRate: number;
+    averageCAC: number;
+  };
+  channelRankings: ChannelPerformanceSummary[];
+  outletSummaries: OutletMarketingSummary[];
+  topCampaigns: CampaignCalculatedMetrics[];
+  underperformingCampaigns: CampaignCalculatedMetrics[];
+} {
+  const campaigns = getTenantCampaigns(businessId);
+  const outlets = getTenantOutlets(businessId);
+  const ranked = rankAllCampaigns(campaigns);
+  const channels = compareChannels(campaigns);
+  const outletSummaries = compareOutletsMarketing(outlets, campaigns);
+
+  const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
+  const totalRevenue = campaigns.reduce((s, c) => s + c.attributedRevenue, 0);
+  const totalClicks = campaigns.reduce((s, c) => s + c.clicks, 0);
+  const totalConversions = campaigns.reduce((s, c) => s + c.conversions, 0);
+  const totalCustomers = campaigns.reduce((s, c) => s + c.customersAcquired, 0);
+
+  return {
+    kpis: {
+      totalMarketingSpend: totalSpend,
+      totalAttributedRevenue: totalRevenue,
+      blendedROI: calcROI(totalSpend, totalRevenue),
+      blendedConversionRate: calcConvRate(totalConversions, totalClicks),
+      averageCAC: calcCAC(totalSpend, totalCustomers)
+    },
+    channelRankings: channels,
+    outletSummaries,
+    topCampaigns: ranked.filter(c => c.performanceTier === 'TOP_PERFORMER'),
+    underperformingCampaigns: ranked.filter(c => c.performanceTier === 'UNDERPERFORMING' || c.performanceTier === 'BUDGET_DRAIN')
+  };
+}
+export const calculate_marketing_effectiveness = calculateMarketingEffectiveness;
+
 export function get_marketing_performance(businessId: string): MarketingRecord[] {
   return getTenantMarketing(businessId);
 }
@@ -414,20 +776,12 @@ export function get_campaign_roi(businessId: string): {
 } {
   const marketing = getTenantMarketing(businessId);
   if (marketing.length === 0) {
-    return {
-      topCampaigns: [],
-      underperformingCampaigns: [],
-      totalSpend: 0,
-      totalRevenue: 0,
-      networkRoi: 0,
-    };
+    return { topCampaigns: [], underperformingCampaigns: [], totalSpend: 0, totalRevenue: 0, networkRoi: 0 };
   }
-
   const sorted = [...marketing].sort((a, b) => b.roi - a.roi);
   const totalSpend = marketing.reduce((s, m) => s + m.spend, 0);
   const totalRevenue = marketing.reduce((s, m) => s + m.revenue_generated, 0);
   const networkRoi = totalSpend > 0 ? Math.round(((totalRevenue - totalSpend) / totalSpend) * 1000) / 10 : 0;
-
   return {
     topCampaigns: sorted.filter(m => m.roi >= 200),
     underperformingCampaigns: sorted.filter(m => m.roi < 150),
@@ -437,27 +791,59 @@ export function get_campaign_roi(businessId: string): {
   };
 }
 
-export function get_audit_status(businessId: string): {
-  audits: AuditRecord[];
-  avgComplianceScore: number;
-  criticalIssues: AuditRecord[];
-} {
-  const audits = getTenantAudits(businessId);
-  if (audits.length === 0) {
-    return { audits: [], avgComplianceScore: 100, criticalIssues: [] };
-  }
-  const avgComplianceScore = Math.round(audits.reduce((s, a) => s + a.compliance_score, 0) / audits.length);
-  const criticalIssues = audits.filter(a => a.severity === 'Critical' || a.severity === 'High' || a.compliance_score < 75);
-  return {
-    audits,
-    avgComplianceScore,
-    criticalIssues,
-  };
+// -------------------------------------------------------------
+// CROSS-AGENT COLLABORATION TOOLS
+// -------------------------------------------------------------
+
+export function getCrossAgentOperationalImpact(businessId: string): CrossAgentCampaignStaffImpact[] {
+  const campaigns = getTenantCampaigns(businessId);
+  const shifts = getTenantShifts(businessId);
+  const employees = getTenantEmployees(businessId);
+  return correlateCampaignsWithWorkforce(campaigns, shifts, employees);
+}
+export const get_cross_agent_operational_impact = getCrossAgentOperationalImpact;
+
+
+import { 
+  getAuditOverview, 
+  getHighRiskAuditOutlets, 
+  generateAIAuditInsights, 
+  generateAuditReport 
+} from './auditEngine';
+
+export function get_audit_status(businessId: string) {
+  return getAuditOverview(businessId);
 }
 
 export function get_open_compliance_issues(businessId: string): AuditRecord[] {
   const audits = getTenantAudits(businessId);
   return audits.filter(a => a.resolution_status === 'Open' || a.resolution_status === 'In Progress' || a.resolution_status === 'Escalated');
+}
+
+export function get_overdue_corrective_actions(businessId: string) {
+  const audits = getTenantAudits(businessId);
+  const now = new Date();
+  return audits.filter(a => {
+    if (a.resolution_status === 'Resolved') return false;
+    const auditDate = new Date(a.audit_date);
+    const diffDays = Math.floor((now.getTime() - auditDate.getTime()) / (1000 * 3600 * 24));
+    return diffDays > 7;
+  });
+}
+
+export function get_high_risk_audit_outlets(businessId: string) {
+  return getHighRiskAuditOutlets(businessId);
+}
+
+export function get_audit_compliance_breakdown(businessId: string) {
+  const overview = getAuditOverview(businessId);
+  const insights = generateAIAuditInsights(businessId);
+  const report = generateAuditReport(businessId);
+  return {
+    overview,
+    insights,
+    report
+  };
 }
 
 export async function get_alerts(businessId: string): Promise<UnderperformanceDetection[]> {
@@ -842,3 +1228,6 @@ export function get_business_sop_context(businessId: string, topic?: string): {
     )
   };
 }
+
+
+

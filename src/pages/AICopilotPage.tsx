@@ -27,6 +27,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { getActiveBusiness, logTenantActivity } from '../services/tenantService';
 import { runBusinessAgentOrchestrator, clearConversationHistory, AgentStructuredOutput } from '../services/businessAgentOrchestrator';
+import { classifyConversationIntent } from '../services/intentClassifier';
 import { BusinessProfile } from '../types';
 import { cn } from '../lib/utils';
 
@@ -69,6 +70,15 @@ export function AICopilotPage() {
   const [actionDone, setActionDone] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
+
+  const handleChatScroll = () => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    const distanceToBottom = scrollHeight - (scrollTop + clientHeight);
+    isNearBottomRef.current = distanceToBottom <= 100;
+  };
 
   const handleTenantChange = () => {
     const current = getActiveBusiness();
@@ -81,7 +91,9 @@ export function AICopilotPage() {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current && isNearBottomRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, [messages, isProcessing, agentStep]);
 
   const [processingStepIndex, setProcessingStepIndex] = useState(0);
@@ -108,13 +120,15 @@ export function AICopilotPage() {
     setIsProcessing(true);
     setProcessingStepIndex(0);
 
-    // Natural message rotation every 650ms during the ~2 second processing window
+    const quickIntent = classifyConversationIntent(textToSend, [], 'en');
+    const isCasual = quickIntent.intent === 'CASUAL_CHAT' || quickIntent.intent === 'GREETING_OR_INTRODUCTION';
+
+    // Natural message rotation during processing window
     const intervalId = setInterval(() => {
       setProcessingStepIndex(prev => (prev < processingSteps.length - 1 ? prev + 1 : prev));
     }, 650);
 
-    // Minimum 2 second presentation duration
-    const minDelayPromise = new Promise(resolve => setTimeout(resolve, 2000));
+    const minDelayPromise = new Promise(resolve => setTimeout(resolve, isCasual ? 250 : 1500));
     const queryPromise = runBusinessAgentOrchestrator(textToSend, business.id, {
       currentPage: 'copilot'
     });
@@ -122,18 +136,20 @@ export function AICopilotPage() {
     try {
       const [result] = await Promise.all([queryPromise, minDelayPromise]);
 
+      const isCasualOrIntro = result.intent === 'CASUAL_CHAT' || result.intent === 'GREETING_OR_INTRODUCTION' || result.intent === 'SUPPORT_REQUEST';
+
       const botMsg: ChatMessage = {
         id: 'bot_' + Date.now(),
         sender: 'assistant',
         text: result.answer,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        keyMetrics: result.key_metrics,
-        relatedOutlets: result.related_outlets,
-        toolsCalled: result.tools_called,
-        dataSources: result.data_sources,
+        keyMetrics: isCasualOrIntro ? undefined : (result.key_metrics?.length ? result.key_metrics : undefined),
+        relatedOutlets: isCasualOrIntro ? undefined : (result.related_outlets?.length ? result.related_outlets : undefined),
+        toolsCalled: isCasualOrIntro ? undefined : (result.tools_called?.length ? result.tools_called : undefined),
+        dataSources: isCasualOrIntro ? undefined : (result.data_sources?.length ? result.data_sources : undefined),
         isAiGenerated: result.isAiGenerated,
         intent: result.intent,
-        suggestedAction: result.suggested_action
+        suggestedAction: isCasualOrIntro ? undefined : result.suggested_action
       };
 
       setMessages(prev => [...prev, botMsg]);
@@ -201,19 +217,45 @@ export function AICopilotPage() {
       "What is our supply chain risk in Pune?"
     ],
     Staff: [
-      "Where do we have staffing shortages?",
-      "Show me shift attendance rates by outlet",
-      "Which outlet has kitchen chef absenteeism?",
-      "How do staff shortages impact order preparation latency?"
+      "Which outlet has the worst staff attendance?",
+      "Which outlet has the best workforce performance?",
+      "Which employees have the highest productivity?",
+      "Which employees are underperforming?",
+      "Where do we currently have staff shortages?",
+      "Which shifts have insufficient staff?",
+      "Which outlet has the lowest shift coverage?",
+      "Which employees have excessive overtime?",
+      "What is our current attendance rate?",
+      "What is the overall workforce productivity?",
+      "Compare workforce performance between outlets.",
+      "Which outlet needs additional staff?",
+      "Give me a workforce summary."
     ],
     Marketing: [
-      "Which marketing campaign has the best ROI?",
-      "How is our marketing performing across regions?",
-      "Recommend a marketing promotion to lift dine-in footfall in Pune",
-      "What is our customer acquisition conversion rate?"
+      "Which campaign has the highest ROI?",
+      "Which campaign has the lowest ROI?",
+      "Which campaign is wasting the most marketing budget?",
+      "Which outlet has the best marketing performance?",
+      "Which marketing channel performs best?",
+      "Compare Instagram and Google Ads performance.",
+      "What is our total marketing spend?",
+      "What is our attributed revenue?",
+      "What is our current blended ROI?",
+      "Which campaign has the highest conversion rate?",
+      "Which campaign has the highest customer acquisition cost?",
+      "Where should we allocate more marketing budget?",
+      "Give me a marketing performance summary."
+    ],
+    "Cross-Agent": [
+      "Which outlets have strong marketing demand but insufficient staff?",
+      "Are our outlets adequately staffed for current marketing campaigns?",
+      "Which marketing campaigns may require additional workforce?",
+      "Which outlet has both poor marketing performance and poor staff productivity?",
+      "What operational risks exist between workforce and marketing?",
+      "Which outlet should receive additional staff before the next campaign?"
     ],
     Risk: [
-      "What are the top three operational risks across the business?",
+      "What are the top operational risks across the business?",
       "Show me all open audit compliance issues",
       "Which outlets need immediate management attention?",
       "What actions should management take today?"
@@ -293,7 +335,11 @@ export function AICopilotPage() {
       {/* Main Chat Interface */}
       <Card className="flex-1 flex flex-col overflow-hidden border-slate-200 shadow-sm bg-white">
         {/* Messages Scroll View */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div 
+          ref={chatContainerRef} 
+          onScroll={handleChatScroll} 
+          className="flex-1 overflow-y-auto p-5 space-y-5"
+        >
           {messages.map((msg) => (
             <div
               key={msg.id}

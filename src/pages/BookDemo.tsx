@@ -1,12 +1,17 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { CheckCircle2, Sparkles } from 'lucide-react';
 import { FranchiseOpsLogo } from '../components/brand/FranchiseOpsLogo';
 import { Button } from '../components/ui/Button';
 import { GlobalHeader } from '../components/layout/GlobalHeader';
 import { GlobalFooter } from '../components/layout/GlobalFooter';
+import { SOLUTIONS_DATA } from '../data/solutionsData';
 
 export function BookDemo() {
+  const [searchParams] = useSearchParams();
+  const solutionParam = searchParams.get('solution') || '';
+  const selectedSolution = SOLUTIONS_DATA[solutionParam];
+
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -15,8 +20,19 @@ export function BookDemo() {
     companyName: '',
     phone: '',
     locations: '',
-    message: ''
+    message: selectedSolution
+      ? `I would like to schedule a personalized walkthrough of the ${selectedSolution.title} for our franchise organization.`
+      : ''
   });
+
+  useEffect(() => {
+    if (selectedSolution && !formData.message) {
+      setFormData(prev => ({
+        ...prev,
+        message: `I would like to schedule a personalized walkthrough of the ${selectedSolution.title} for our franchise organization.`
+      }));
+    }
+  }, [selectedSolution]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +55,7 @@ export function BookDemo() {
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900">Thank you, {formData.firstName || 'there'}!</h2>
                 <p className="text-slate-600 text-sm max-w-md mx-auto leading-relaxed">
-                  Your demo request has been received. One of our franchise operations specialists will reach out to you within 24 hours.
+                  Your demo request {selectedSolution ? `for ${selectedSolution.title}` : ''} has been received. One of our franchise operations specialists will reach out to you within 24 hours.
                 </p>
                 <div className="pt-6">
                   <Link to="/dashboard">
@@ -52,12 +68,25 @@ export function BookDemo() {
             ) : (
               <>
                 <div className="text-center mb-8">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold mb-4 border border-orange-200/60">
-                    <FranchiseOpsLogo className="w-3.5 h-3.5" />
-                    Personalized Platform Tour
-                  </div>
-                  <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Book a Demo</h1>
-                  <p className="mt-2 text-slate-600 text-sm">See how FranchiseOps AI can transform your multi-unit operational efficiency.</p>
+                  {selectedSolution ? (
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-100/80 text-orange-700 text-xs font-bold mb-4 border border-orange-200">
+                      <Sparkles className="w-3.5 h-3.5 text-orange-600" />
+                      <span>Demo Focus: {selectedSolution.title}</span>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold mb-4 border border-orange-200/60">
+                      <FranchiseOpsLogo className="w-3.5 h-3.5" />
+                      Personalized Platform Tour
+                    </div>
+                  )}
+                  <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                    {selectedSolution ? `Request a ${selectedSolution.title} Demo` : 'Book a Demo'}
+                  </h1>
+                  <p className="mt-2 text-slate-600 text-sm">
+                    {selectedSolution
+                      ? `Discover how ${selectedSolution.title} automates ${selectedSolution.category.toLowerCase()} across your units.`
+                      : 'See how FranchiseOps AI can transform your multi-unit operational efficiency.'}
+                  </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">

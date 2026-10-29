@@ -60,12 +60,17 @@ export function GlobalHeader() {
           >
             Platform
           </Link>
-          <Link 
-            to="/dashboard/intelligence" 
-            className="text-sm font-semibold text-slate-700 hover:text-[#ff6b3d] transition-colors"
+          <a 
+            href="/#solutions" 
+            className={cn(
+              "text-sm font-semibold transition-colors",
+              location.pathname.startsWith('/solutions')
+                ? "text-[#ff6b3d] font-bold"
+                : "text-slate-700 hover:text-[#ff6b3d]"
+            )}
           >
             Solutions
-          </Link>
+          </a>
           <Link 
             to="/pricing" 
             className={cn(
@@ -152,13 +157,13 @@ export function GlobalHeader() {
             >
               Platform (Dashboard)
             </Link>
-            <Link
-              to="/dashboard/intelligence"
+            <a
+              href="/#solutions"
               onClick={() => setMobileMenuOpen(false)}
               className="text-sm font-semibold text-slate-800 hover:text-[#ff6b3d] py-1"
             >
               Solutions
-            </Link>
+            </a>
             <Link
               to="/pricing"
               onClick={() => setMobileMenuOpen(false)}

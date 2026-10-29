@@ -299,11 +299,11 @@ export function LandingPage() {
                 </p>
 
                 <div className="space-y-4">
-                  <FeatureLink title="Franchise Growth Hub" href="/demo" />
-                  <FeatureLink title="SOP & Playbook Center" href="/demo" />
-                  <FeatureLink title="Operations Intelligence Hub" href="/demo" />
-                  <FeatureLink title="Compliance & Audit Center" href="/demo" />
-                  <FeatureLink title="Team Onboarding Hub" href="/demo" />
+                  <FeatureLink title="Franchise Growth Hub" href="/solutions/franchise-growth" />
+                  <FeatureLink title="SOP & Playbook Center" href="/solutions/sop-playbook" />
+                  <FeatureLink title="Operations Intelligence Hub" href="/solutions/operations-intelligence" />
+                  <FeatureLink title="Compliance & Audit Center" href="/solutions/compliance-audit" />
+                  <FeatureLink title="Team Onboarding Hub" href="/solutions/team-onboarding" />
                 </div>
               </div>
 
